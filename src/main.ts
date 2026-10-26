@@ -1,20 +1,13 @@
 import './style.css'
-import { Color, PerspectiveCamera, Scene, WebGLRenderer } from 'three'
+import { createDeskScene } from './scene/desk'
+import { paintGrain } from './ui/film'
 
-const host = document.querySelector<HTMLDivElement>('#scene')!
-const renderer = new WebGLRenderer({ antialias: true })
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
-renderer.setSize(innerWidth, innerHeight)
-host.appendChild(renderer.domElement)
+const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const scene = new Scene()
-scene.background = new Color(0x050505)
-const camera = new PerspectiveCamera(48, innerWidth / innerHeight, 0.01, 20)
+paintGrain($('#grain'))
+const desk = createDeskScene($('#scene'), reduced)
+desk.setDisplay(40, 6)
+document.fonts.ready.then(() => desk.setDisplay(40, 6))
 
-renderer.setAnimationLoop(() => renderer.render(scene, camera))
-
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight
-  camera.updateProjectionMatrix()
-  renderer.setSize(innerWidth, innerHeight)
-})
+setInterval(() => desk.beat(), 60000 / 64)
