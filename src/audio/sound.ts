@@ -140,6 +140,10 @@ export const sfx = {
     tone({ freq: 48, dur: 2.2, gain: 0.7, slideTo: 26 })
     tone({ freq: 3900, dur: 4.5, gain: 0.025, when: 0.35, attack: 0.4 })
   },
+  thump() {
+    burst({ dur: 0.7, type: 'lowpass', freq: 150, gain: 0.32 })
+    tone({ freq: 42, dur: 0.55, gain: 0.16 })
+  },
   duck(level: number, seconds: number) {
     if (!ac) return
     drone.gain.cancelScheduledValues(ac.currentTime)

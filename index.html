@@ -26,6 +26,7 @@
       </div>
     </div>
 
+    <div class="room" id="room" aria-hidden="true"></div>
     <div class="status" id="status" aria-live="polite"></div>
     <div class="strip" id="strip"></div>
 
@@ -33,7 +34,8 @@
       <div class="card">
         <p class="eyebrow">Desk 4</p>
         <h1>BOMB DESK</h1>
-        <p>You're at a desk in a basement. Type each line exactly as it's written. Every third slip, or the clock running out, makes the device on your desk cut one of its six wires. Five are safe. One isn't, and every safe cut makes the next one worse.</p>
+        <p>You're at desk 4 of 8 in a basement. Type each line exactly as it's written. Every third slip, or the clock running out, makes the device on your desk cut one of its six wires. Five are safe. One isn't, and every safe cut makes the next one worse.</p>
+        <p>Whoever finishes a round last gets a cut anyway. The last desk still lit wins.</p>
         <p class="small">Headphones on &middot; capitals don't matter &middot; needs a keyboard</p>
         <button class="btn" id="start">Sit down</button>
       </div>
@@ -44,6 +46,7 @@
         <p class="eyebrow">Desk 4</p>
         <h2>Your desk went dark</h2>
         <p id="deadText"></p>
+        <p class="small" id="deadRoom"></p>
         <button class="btn" id="again">Sit back down</button>
       </div>
     </div>
@@ -54,6 +57,15 @@
         <h2>Still lit</h2>
         <p id="breakText"></p>
         <p class="small" id="breakCount"></p>
+      </div>
+    </div>
+
+    <div class="overlay" id="won" hidden>
+      <div class="card">
+        <p class="eyebrow">Desk 4</p>
+        <h2>Last desk lit</h2>
+        <p id="wonText"></p>
+        <button class="btn" id="replay">Play again</button>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
