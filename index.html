@@ -15,11 +15,14 @@
     <div class="grain" id="grain"></div>
     <div class="vignette"></div>
     <div class="hurt" id="hurt"></div>
+    <div class="flash" id="flash"></div>
 
     <div class="hud">
       <div><strong>Desk 4</strong> &nbsp;&middot;&nbsp; round <span id="round">1</span> &nbsp;&middot;&nbsp; line <span id="line">1</span> of 3</div>
       <div class="right">
         <div class="timer" id="timer">0:40</div>
+        <div class="pips" aria-label="Slips"><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+        <div id="odds">6 wires &middot; 1 in 6</div>
       </div>
     </div>
 
@@ -30,9 +33,27 @@
       <div class="card">
         <p class="eyebrow">Desk 4</p>
         <h1>BOMB DESK</h1>
-        <p>You're at a desk in a basement with one lamp and a device that counts down. Type each line exactly as it's written. Capitals don't matter, but every other key does.</p>
-        <p class="small">Needs a keyboard</p>
+        <p>You're at a desk in a basement. Type each line exactly as it's written. Every third slip, or the clock running out, makes the device on your desk cut one of its six wires. Five are safe. One isn't, and every safe cut makes the next one worse.</p>
+        <p class="small">Capitals don't matter &middot; needs a keyboard</p>
         <button class="btn" id="start">Sit down</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="dead" hidden>
+      <div class="card">
+        <p class="eyebrow">Desk 4</p>
+        <h2>Your desk went dark</h2>
+        <p id="deadText"></p>
+        <button class="btn" id="again">Sit back down</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="break" hidden>
+      <div class="card">
+        <p class="eyebrow" id="breakEyebrow">Round 1</p>
+        <h2>Still lit</h2>
+        <p id="breakText"></p>
+        <p class="small" id="breakCount"></p>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
