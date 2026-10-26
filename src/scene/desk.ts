@@ -26,6 +26,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three'
+import { clock } from '../ui/format'
 import { canvasTexture, noiseCanvas } from './textures'
 
 const WIRE_HEX = [0xa8261d, 0x2c58a0, 0xc9a02a, 0x3b7337, 0xd6d1c4, 0x1c1c1c]
@@ -248,13 +249,12 @@ export function createDeskScene(host: HTMLElement, reduced: boolean): DeskScene 
     },
     setDisplay(seconds, wiresLeft) {
       const ctx = displayCanvas.getContext('2d')!
-      const left = Math.max(0, Math.ceil(seconds))
       ctx.fillStyle = '#140404'
       ctx.fillRect(0, 0, 256, 112)
-      ctx.fillStyle = left <= 10 ? '#ff4a36' : '#e8322a'
+      ctx.fillStyle = seconds <= 10 ? '#ff4a36' : '#e8322a'
       ctx.font = '600 62px "IBM Plex Mono", monospace'
       ctx.textBaseline = 'middle'
-      ctx.fillText(`${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, 18, 46)
+      ctx.fillText(clock(seconds), 18, 46)
       ctx.fillStyle = '#7a1c16'
       ctx.font = '500 22px "IBM Plex Mono", monospace'
       ctx.fillText(`1 IN ${wiresLeft}`, 20, 94)
