@@ -1,0 +1,37 @@
+:root {
+  color-scheme: dark;
+  --void: #060606;
+  --ink: #ece6d8;
+  --muted: #8c8578;
+  --lamp: #f2c27c;
+  --alarm: #e3372d;
+  --paper: #d6cdb7;
+  --paper-ink: #1c1915;
+  --paper-dim: #8a8170;
+  --font-display: 'Big Shoulders Stencil Display', Impact, 'Arial Narrow', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  overflow: hidden;
+}
+
+#scene,
+#scene canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+}
