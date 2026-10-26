@@ -10,8 +10,17 @@ export function createStrip(el: HTMLElement) {
   let spans: HTMLSpanElement[] = []
 
   return {
+    note(message: string) {
+      if (!shown && text.textContent === message) return
+      shown = undefined
+      spans = []
+      text.replaceChildren(message)
+      text.classList.add('waiting')
+      source.hidden = true
+    },
     show(line: Line | undefined, pos: number, bad = false) {
-      if (line !== shown) {
+      if (line !== shown || text.classList.contains('waiting')) {
+        text.classList.remove('waiting')
         shown = line
         spans = [...(line?.text ?? '')].map(ch => {
           const span = document.createElement('span')
@@ -19,7 +28,7 @@ export function createStrip(el: HTMLElement) {
           return span
         })
         text.replaceChildren(...spans)
-        source.textContent = line?.source ? `— ${line.source}` : ''
+        source.textContent = line?.source ? `\u2014 ${line.source}` : ''
         source.hidden = !line?.source
       }
       spans.forEach((span, i) => (span.className = i < pos ? 'done' : i === pos ? (bad ? 'cur bad' : 'cur') : ''))

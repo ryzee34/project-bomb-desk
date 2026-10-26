@@ -2,7 +2,7 @@ import { LINES, type Line } from './lines'
 import { seeded, shuffle, type Rng } from './random'
 import { BREAK_MS, LINES_PER_ROUND, LINE_MS, ROLL_MS, SLIPS_TO_ROLL, WIRES } from './rules'
 
-export type RollReason = 'slips' | 'time'
+export type RollReason = 'slips' | 'time' | 'last'
 
 export interface Roll {
   wire: number
@@ -21,7 +21,9 @@ export interface Desk {
   cut: number[]
   roll: Roll | null
   done: boolean
+  finishedAs: number
   out: boolean
+  place: number
 }
 
 export interface Room {
@@ -32,6 +34,9 @@ export interface Room {
   desks: Desk[]
   phase: 'typing' | 'break' | 'over'
   breakLeft: number
+  finished: number
+  lastCut: boolean
+  winner: number | null
 }
 
 export type RoomEvent =
@@ -41,10 +46,10 @@ export type RoomEvent =
   | { type: 'finished'; desk: number }
   | { type: 'roll'; desk: number; wire: number; reason: RollReason }
   | { type: 'cut'; desk: number; wire: number }
-  | { type: 'out'; desk: number; wire: number }
+  | { type: 'out'; desk: number; wire: number; place: number }
   | { type: 'break'; round: number }
   | { type: 'round'; round: number }
-  | { type: 'over' }
+  | { type: 'over'; winner: number | null }
 
 export function createRoom(seed: number, deskIds: number[]): Room {
   const rng = seeded(seed)
@@ -64,10 +69,15 @@ export function createRoom(seed: number, deskIds: number[]): Room {
       cut: [],
       roll: null,
       done: false,
+      finishedAs: 0,
       out: false,
+      place: 0,
     })),
     phase: 'typing',
     breakLeft: 0,
+    finished: 0,
+    lastCut: false,
+    winner: null,
   }
   startRound(room)
   return room
@@ -85,6 +95,16 @@ export function wiresLeft(desk: Desk) {
   return WIRES - desk.cut.length
 }
 
+export function alive(room: Room) {
+  return room.desks.filter(desk => !desk.out)
+}
+
+export function progress(room: Room, desk: Desk) {
+  const total = room.lines.reduce((sum, line) => sum + line.text.length, 0)
+  const typed = room.lines.slice(0, desk.lineIdx).reduce((sum, line) => sum + line.text.length, 0) + desk.pos
+  return total ? Math.min(1, typed / total) : 0
+}
+
 function drawLines(room: Room) {
   const lines: Line[] = []
   while (lines.length < LINES_PER_ROUND) {
@@ -98,12 +118,15 @@ function startRound(room: Room): RoomEvent[] {
   room.round++
   room.phase = 'typing'
   room.lines = drawLines(room)
+  room.finished = 0
+  room.lastCut = false
   for (const desk of room.desks) {
     desk.lineIdx = 0
     desk.pos = 0
     desk.lineLeft = LINE_MS
     desk.slips = 0
     desk.done = desk.out
+    desk.finishedAs = 0
   }
   return [{ type: 'round', round: room.round }]
 }
@@ -115,13 +138,14 @@ function startRoll(room: Room, desk: Desk, reason: RollReason): RoomEvent[] {
   return [{ type: 'roll', desk: desk.id, wire, reason }]
 }
 
-function resolveRoll(desk: Desk): RoomEvent[] {
+function resolveRoll(room: Room, desk: Desk): RoomEvent[] {
   const { wire } = desk.roll!
   desk.roll = null
   if (wire === desk.live) {
     desk.out = true
     desk.done = true
-    return [{ type: 'out', desk: desk.id, wire }]
+    desk.place = alive(room).length + 1
+    return [{ type: 'out', desk: desk.id, wire, place: desk.place }, ...checkOver(room)]
   }
   desk.cut.push(wire)
   desk.slips = 0
@@ -129,13 +153,24 @@ function resolveRoll(desk: Desk): RoomEvent[] {
   return [{ type: 'cut', desk: desk.id, wire }]
 }
 
+function checkOver(room: Room): RoomEvent[] {
+  const left = alive(room)
+  if (left.length > 1 || (left.length === 1 && room.desks.length === 1)) return []
+  room.phase = 'over'
+  room.winner = left[0]?.id ?? null
+  for (const desk of left) desk.place = 1
+  return [{ type: 'over', winner: room.winner }]
+}
+
 function checkRound(room: Room): RoomEvent[] {
   if (room.phase !== 'typing') return []
-  if (room.desks.every(desk => desk.out)) {
-    room.phase = 'over'
-    return [{ type: 'over' }]
+  const left = alive(room)
+  if (!left.every(desk => desk.done && !desk.roll)) return []
+  if (left.length > 1 && !room.lastCut) {
+    room.lastCut = true
+    const last = left.reduce((a, b) => (b.finishedAs > a.finishedAs ? b : a))
+    return startRoll(room, last, 'last')
   }
-  if (!room.desks.every(desk => desk.done && !desk.roll)) return []
   room.phase = 'break'
   room.breakLeft = BREAK_MS
   return [{ type: 'break', round: room.round }]
@@ -161,6 +196,7 @@ export function press(room: Room, id: number, key: string): RoomEvent[] {
   desk.lineLeft = LINE_MS
   if (desk.lineIdx < room.lines.length) return [...events, { type: 'line', desk: id }]
   desk.done = true
+  desk.finishedAs = ++room.finished
   return [...events, { type: 'finished', desk: id }, ...checkRound(room)]
 }
 
@@ -173,9 +209,10 @@ export function advance(room: Room, ms: number): RoomEvent[] {
   }
   if (room.phase !== 'typing') return events
   for (const desk of room.desks) {
+    if (room.phase !== 'typing') return events
     if (desk.roll) {
       desk.roll.elapsed += ms
-      if (desk.roll.elapsed >= ROLL_MS) events.push(...resolveRoll(desk))
+      if (desk.roll.elapsed >= ROLL_MS) events.push(...resolveRoll(room, desk))
       continue
     }
     if (desk.done) continue

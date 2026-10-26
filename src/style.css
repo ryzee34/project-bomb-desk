@@ -176,6 +176,10 @@ body {
   white-space: pre-wrap;
 }
 
+.strip .text.waiting {
+  color: var(--paper-dim);
+}
+
 .strip .source {
   margin: 6px 0 0;
   font-size: 11px;
@@ -214,6 +218,100 @@ body {
   40% { transform: translateX(calc(-50% + 6px)); }
   60% { transform: translateX(calc(-50% - 4px)); }
   80% { transform: translateX(calc(-50% + 2px)); }
+}
+
+.room {
+  position: fixed;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 188px;
+  display: grid;
+  gap: 9px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.room h2 {
+  margin: 0 0 2px;
+  font: 600 15px / 1 var(--font-display);
+  letter-spacing: 0.14em;
+}
+
+.desk {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.desk .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lamp);
+  box-shadow: 0 0 8px rgba(242, 194, 124, 0.7);
+}
+
+.desk .odds {
+  font-variant-numeric: tabular-nums;
+}
+
+.desk .bar {
+  grid-column: 2 / 4;
+  height: 2px;
+  background: #2a2724;
+}
+
+.desk .bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--muted);
+}
+
+.desk.you {
+  color: var(--ink);
+}
+
+.desk.you .bar i {
+  background: var(--lamp);
+}
+
+.desk.rolling .dot {
+  background: var(--alarm);
+  box-shadow: 0 0 10px rgba(227, 55, 45, 0.9);
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+.desk.rolling .odds {
+  color: var(--alarm);
+}
+
+.desk.out {
+  color: #4f4a43;
+}
+
+.desk.out span:nth-child(2) {
+  text-decoration: line-through;
+}
+
+.desk.out .dot {
+  background: #2a2724;
+  box-shadow: none;
+}
+
+.desk.won {
+  color: var(--lamp);
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.35;
+  }
 }
 
 .overlay {
@@ -290,6 +388,10 @@ body {
 }
 
 @media (max-width: 820px) {
+  .room {
+    display: none;
+  }
+
   .strip .text {
     font-size: 17px;
   }
@@ -305,7 +407,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .grain,
-  .strip.shake {
+  .strip.shake,
+  .desk.rolling .dot {
     animation: none;
   }
 }
