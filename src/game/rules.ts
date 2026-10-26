@@ -1,3 +1,9 @@
 export const YOUR_DESK = 4
 export const LINES_PER_ROUND = 3
 export const LINE_MS = 40_000
+export const WIRES = 6
+export const SLIPS_TO_ROLL = 3
+export const ROLL_MS = 5_100
+export const SPIN_MS = 3_600
+export const BREAK_MS = 6_000
+export const WIRE_NAMES = ['red', 'blue', 'yellow', 'green', 'white', 'black']

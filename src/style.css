@@ -115,6 +115,31 @@ body {
   color: #ff4a36;
 }
 
+.pips {
+  display: flex;
+  gap: 6px;
+}
+
+.pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--muted);
+}
+
+.pip.on {
+  background: var(--lamp);
+  border-color: var(--lamp);
+}
+
+.flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: #fff6e8;
+  opacity: 0;
+}
+
 .status {
   position: fixed;
   left: 50%;

@@ -226,7 +226,7 @@ export function createDeskScene(host: HTMLElement, reduced: boolean): DeskScene 
     bulbMaterial.color.setScalar(lampTarget > 0 ? 0.55 + 0.45 * (lamp.intensity / LAMP) : 0.05)
     flickerAmount *= 0.92
     ledLevel *= 0.9
-    ledMaterial.emissiveIntensity = 0.25 + ledLevel * 1.1 + redExtra * 0.5
+    ledMaterial.emissiveIntensity = dark ? 0 : 0.25 + ledLevel * 1.1 + redExtra * 0.5
     redLight.intensity = dark ? 0 : (0.15 + ledLevel * 1.1 + redExtra) * RED
     renderer.render(scene, camera)
   }
@@ -261,7 +261,7 @@ export function createDeskScene(host: HTMLElement, reduced: boolean): DeskScene 
       displayTexture.needsUpdate = true
     },
     setSlips(count) {
-      bulbs.forEach((material, i) => (material.emissiveIntensity = i < count ? 1.3 : 0))
+      bulbs.forEach((material, i) => (material.emissiveIntensity = !dark && i < count ? 1.3 : 0))
     },
     litWire(index) {
       wires.forEach((wire, i) => (wire.material.emissiveIntensity = i === index ? 0.9 : 0))
@@ -307,12 +307,15 @@ export function createDeskScene(host: HTMLElement, reduced: boolean): DeskScene 
     },
     blackout() {
       dark = true
+      display.visible = false
+      bulbs.forEach(material => (material.emissiveIntensity = 0))
       lampTarget = 0
       redExtra = 0
       renderer.toneMappingExposure = 0
     },
     relight() {
       dark = false
+      display.visible = true
       lampTarget = LAMP
       redExtra = 0
       renderer.toneMappingExposure = EXPOSURE
