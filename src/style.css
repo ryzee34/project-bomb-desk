@@ -35,3 +35,33 @@ body {
   inset: 0;
   display: block;
 }
+
+.grain {
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  opacity: 0.08;
+  animation: grain 0.5s steps(5) infinite;
+}
+
+@keyframes grain {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-3%, 2%); }
+  40% { transform: translate(2%, -3%); }
+  60% { transform: translate(-2%, -1%); }
+  80% { transform: translate(3%, 1%); }
+  100% { transform: translate(0, 0); }
+}
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 75% 70% at 50% 52%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.82) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grain {
+    animation: none;
+  }
+}
