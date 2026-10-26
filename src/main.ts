@@ -1,4 +1,5 @@
 import './style.css'
+import { sfx, startAudio } from './audio/sound'
 import { advance, createRoom, currentLine, deskById, press, wiresLeft, type Room, type RoomEvent } from './game/room'
 import { SPIN_MS, WIRES, WIRE_NAMES, YOUR_DESK } from './game/rules'
 import { createDeskScene } from './scene/desk'
@@ -18,6 +19,7 @@ const strip = createStrip($('#strip'))
 let room: Room = createRoom(Date.now(), [YOUR_DESK])
 let playing = false
 let shownDisplay = ''
+let shownSeconds = -1
 let statusTimer = 0
 let spin: Spin | null = null
 let spinShown = -1
@@ -36,6 +38,8 @@ function refresh() {
   const seconds = Math.ceil(me.lineLeft / 1000)
   renderHud({ round: room.round, line: Math.min(me.lineIdx + 1, room.lines.length), seconds, slips: me.slips, wires: wiresLeft(me) })
   desk.setSlips(me.slips)
+  if (playing && room.phase === 'typing' && !me.roll && seconds < shownSeconds) sfx.tick(seconds <= 10)
+  shownSeconds = seconds
   const display = `${seconds}/${wiresLeft(me)}`
   if (display !== shownDisplay) {
     shownDisplay = display
@@ -52,12 +56,16 @@ function showSpin() {
   if (step !== spinShown && step >= 0) {
     spinShown = step
     desk.litWire(spin.wires[step]!)
+    sfx.roll()
   }
   if (roll.elapsed >= SPIN_MS) setStatus('')
 }
 
 async function explode(wire: number) {
   playing = false
+  sfx.snip()
+  sfx.boom()
+  sfx.duck(0, 0.05)
   desk.litWire(null)
   desk.shake(0.08)
   desk.blackout()
@@ -76,6 +84,7 @@ function handle(events: RoomEvent[]) {
     if ('desk' in event && event.desk !== YOUR_DESK) continue
     switch (event.type) {
       case 'slip':
+        sfx.slip()
         hurt()
         desk.shake(0.012)
         strip.shake()
@@ -88,11 +97,15 @@ function handle(events: RoomEvent[]) {
         spinShown = -1
         strip.dim(true)
         desk.setDread(true)
+        sfx.duck(0.25, 0.4)
         setStatus(event.reason === 'time' ? 'Time ran out. The device is choosing a wire.' : 'Three slips. The device is choosing a wire.')
         break
       }
       case 'cut':
         spin = null
+        sfx.snip()
+        setTimeout(() => sfx.relief(), 250)
+        sfx.duck(1, 1.2)
         desk.litWire(null)
         desk.cutWire(event.wire)
         desk.setDread(false)
@@ -124,7 +137,9 @@ addEventListener('keydown', e => {
   if (e.key.length !== 1) return
   e.preventDefault()
   desk.pressKey(e.key)
-  handle(press(room, YOUR_DESK, e.key))
+  const events = press(room, YOUR_DESK, e.key)
+  if (events.length) sfx.key()
+  handle(events)
 })
 
 let last = performance.now()
@@ -144,6 +159,7 @@ function heartbeat() {
   const low = playing && me.lineLeft <= 10_000 ? 1 : 0
   desk.setNerves(1 + slips * 0.35 + rolling * 0.8)
   if (playing || room.phase !== 'over') desk.beat()
+  if (playing) sfx.beat(Math.min(0.45 + slips * 0.18 + rolling * 0.5, 1.2))
   setTimeout(heartbeat, 60000 / (64 + slips * 16 + rolling * 48 + low * 18))
 }
 
@@ -156,12 +172,14 @@ function sitDown() {
   strip.dim(false)
   $('#strip').hidden = false
   setStatus('')
+  sfx.duck(1, 0.6)
   playing = true
   last = performance.now()
   refresh()
 }
 
 $('#start').addEventListener('click', () => {
+  startAudio()
   $('#intro').hidden = true
   $('#start').blur()
   sitDown()
