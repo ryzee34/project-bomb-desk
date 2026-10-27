@@ -1,5 +1,5 @@
 import { LEVELS } from '../game/bots'
-import { progress, wiresLeft } from '../game/room'
+import { odds, progress } from '../game/room'
 import type { Play } from '../play/play'
 
 type Kick = (id: number, button: HTMLButtonElement) => void
@@ -74,7 +74,7 @@ export function createRoomPanel(el: HTMLElement) {
         row.el.classList.toggle('out', desk.out)
         row.el.classList.toggle('rolling', !!desk.roll)
         row.el.classList.toggle('won', room.winner === desk.id)
-        row.odds.textContent = desk.out ? 'dark' : `1 in ${wiresLeft(desk)}`
+        row.odds.textContent = desk.out ? 'dark' : `1 in ${odds(desk, room.round)}`
         row.bar.style.width = `${(desk.out ? 0 : desk.done ? 1 : progress(room, desk)) * 100}%`
       }
     },

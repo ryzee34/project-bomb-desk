@@ -97,7 +97,7 @@ function refresh() {
   const desk = me()
   if (!desk) return
   const seconds = Math.ceil(desk.lineLeft / 1000)
-  renderHud({ round: room.round, line: Math.min(desk.lineIdx + 1, room.lines.length), seconds, slips: desk.slips, wires: wiresLeft(desk) })
+  renderHud({ round: room.round, line: Math.min(desk.lineIdx + 1, room.lines.length), seconds, slips: desk.slips, wires: wiresLeft(desk), odds: odds(desk, room.round) })
   scene.setSlips(desk.slips)
   if (playing() && room.phase === 'typing' && !desk.roll && seconds < shownSeconds) sfx.tick(seconds <= 10)
   shownSeconds = seconds
