@@ -1,4 +1,6 @@
-import { progress, wiresLeft, type Room } from '../game/room'
+import { LEVELS } from '../game/bots'
+import { progress, wiresLeft } from '../game/room'
+import type { Play } from '../play/play'
 
 interface Row {
   el: HTMLDivElement
@@ -10,9 +12,9 @@ export function createRoomPanel(el: HTMLElement) {
   let rows = new Map<number, Row>()
   let label = ''
 
-  function build(room: Room, you: number | null, humans: Set<number>, names: Map<number, string>) {
+  function build({ room, you, humans, names, level }: Play) {
     const heading = document.createElement('h2')
-    heading.textContent = 'The room'
+    heading.textContent = room.desks.some(desk => !humans.has(desk.id)) ? `The room \u00b7 ${LEVELS[level]!.name}` : 'The room'
     rows = new Map()
     const els = room.desks.map(desk => {
       const row = document.createElement('div')
@@ -42,11 +44,12 @@ export function createRoomPanel(el: HTMLElement) {
   }
 
   return {
-    render(room: Room, you: number | null, humans: Set<number>, names: Map<number, string>) {
-      const key = JSON.stringify([room.desks.map(desk => desk.id), you, [...humans], [...names]])
+    render(play: Play) {
+      const { room, you, humans, names, level } = play
+      const key = JSON.stringify([room.desks.map(desk => desk.id), you, [...humans], [...names], level])
       if (key !== label) {
         label = key
-        build(room, you, humans, names)
+        build(play)
       }
       for (const desk of room.desks) {
         const row = rows.get(desk.id)!

@@ -10,22 +10,38 @@ export interface Bot {
 
 export interface Bots {
   rng: Rng
+  level: number
   list: Bot[]
 }
 
+export const LEVELS = [
+  { name: 'Easy', cps: [2.2, 3.2], slips: [0.05, 0.08] },
+  { name: 'Normal', cps: [2.4, 4.6], slips: [0.018, 0.045] },
+  { name: 'Hard', cps: [3.2, 5.8], slips: [0.012, 0.03] },
+  { name: 'Expert', cps: [4.4, 7.6], slips: [0.01, 0.022] },
+  { name: 'Brutal', cps: [5.6, 9.6], slips: [0.008, 0.018] },
+] as const
+
+export const NORMAL = 1
+
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz'
 
-function makeBot(rng: Rng, id: number): Bot {
-  return { id, cps: between(rng, 2.4, 4.6), slipRate: between(rng, 0.018, 0.045), wait: between(rng, 400, 1200) }
+export function pickLevel(level: unknown) {
+  return typeof level === 'number' && Number.isInteger(level) && level >= 0 && level < LEVELS.length ? level : NORMAL
 }
 
-export function makeBots(seed: number, ids: number[]): Bots {
+function makeBot(rng: Rng, id: number, level: number): Bot {
+  const { cps, slips } = LEVELS[level]!
+  return { id, cps: between(rng, cps[0], cps[1]), slipRate: between(rng, slips[0], slips[1]), wait: between(rng, 400, 1200) }
+}
+
+export function makeBots(seed: number, ids: number[], level = NORMAL): Bots {
   const rng = seeded(seed ^ 0x9e3779b9)
-  return { rng, list: ids.map(id => makeBot(rng, id)) }
+  return { rng, level, list: ids.map(id => makeBot(rng, id, level)) }
 }
 
 export function addBot(bots: Bots, id: number) {
-  if (!bots.list.some(bot => bot.id === id)) bots.list.push(makeBot(bots.rng, id))
+  if (!bots.list.some(bot => bot.id === id)) bots.list.push(makeBot(bots.rng, id, bots.level))
 }
 
 export function dropBot(bots: Bots, id: number) {

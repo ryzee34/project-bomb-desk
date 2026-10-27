@@ -1,3 +1,4 @@
+import { NORMAL } from '../game/bots'
 import { applyView, mirrorOf, type ClientMessage, type ServerMessage } from '../game/protocol'
 import { press, type Room, type RoomEvent } from '../game/room'
 import type { Play } from './play'
@@ -10,7 +11,7 @@ export interface Lobby {
 }
 
 export interface Table {
-  start(bots: number): void
+  start(bots: number, level: number): void
   rename(name: string): void
   leave(): void
 }
@@ -24,6 +25,7 @@ class Mirror implements Play {
   you: number | null
   humans = new Set<number>()
   names = new Map<number, string>()
+  level = NORMAL
   game: number
   seq = 0
   pending: { s: number; k: string }[] = []
@@ -64,6 +66,7 @@ class Mirror implements Play {
     const humans = msg.view.desks.filter(desk => desk.human)
     this.humans = new Set(humans.map(desk => desk.id))
     this.names = new Map(humans.map(desk => [desk.id, desk.name ?? '']))
+    this.level = msg.view.level ?? NORMAL
     this.pending = this.pending.filter(key => key.s > msg.ack)
     if (this.you !== null) for (const key of this.pending) press(this.room, this.you, key.k, false)
     this.queue.push(...msg.events.filter(event => !('desk' in event && event.desk === this.you && PREDICTED.has(event.type))))
@@ -115,7 +118,7 @@ export function joinRoom(
 
   open()
   return {
-    start: bots => send({ t: 'start', bots }),
+    start: (bots, level) => send({ t: 'start', bots, level }),
     rename: next => send({ t: 'name', name: next }),
     leave() {
       left = true

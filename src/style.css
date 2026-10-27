@@ -482,6 +482,44 @@ body {
   gap: 10px;
 }
 
+.levels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.levels .small {
+  margin-right: 4px;
+}
+
+.level {
+  font: 500 12px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  box-shadow: inset 0 0 0 1px #3a3631;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.level:hover {
+  background: rgba(236, 230, 216, 0.08);
+}
+
+.level[aria-checked='true'] {
+  color: var(--void);
+  background: var(--lamp);
+  box-shadow: none;
+}
+
+.level:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
 .bots .step {
   padding: 6px 13px;
 }

@@ -35,6 +35,20 @@ export function saveName(name: string) {
   } catch {}
 }
 
+export function savedLevel() {
+  try {
+    return Number(localStorage.getItem('bomb-desk-level') ?? NaN)
+  } catch {
+    return NaN
+  }
+}
+
+export function saveLevel(level: number) {
+  try {
+    localStorage.setItem('bomb-desk-level', String(level))
+  } catch {}
+}
+
 export function roomFromUrl() {
   const code = new URLSearchParams(location.search).get('room')?.toLowerCase() ?? ''
   return /^[a-z0-9]{4,12}$/.test(code) ? code : null

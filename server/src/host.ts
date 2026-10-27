@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers'
-import { addBot, driveBots, dropBot, makeBots, type Bots } from '../../src/game/bots'
+import { addBot, driveBots, dropBot, makeBots, pickLevel, type Bots } from '../../src/game/bots'
 import { cleanName, viewOf, type ClientMessage, type ServerMessage } from '../../src/game/protocol'
 import { advance, createRoom, deskById, press, type Room, type RoomEvent } from '../../src/game/room'
 import { MIN_DESKS } from '../../src/game/rules'
@@ -62,7 +62,7 @@ export class RoomHost extends DurableObject<Env> {
     const tag = this.tag(ws)
     if (!tag) return
     if (msg.t === 'name') return this.rename(ws, tag, msg.name)
-    if (msg.t === 'start') return this.start(ws, msg.bots)
+    if (msg.t === 'start') return this.start(ws, msg.bots, msg.level)
     if (msg.t === 'key') return this.key(tag.player, msg.k, msg.s)
   }
 
@@ -130,7 +130,7 @@ export class RoomHost extends DurableObject<Env> {
     else this.lobby()
   }
 
-  start(ws: WebSocket, bots: unknown) {
+  start(ws: WebSocket, bots: unknown, level: unknown) {
     const people = this.joined()
     if (people[0] !== ws || this.playing()) return
     const humans = people.slice(0, SEAT_ORDER.length)
@@ -144,7 +144,7 @@ export class RoomHost extends DurableObject<Env> {
     this.game = {
       id: now,
       room: createRoom(seed, [...seats.values(), ...botDesks].sort((a, b) => a - b)),
-      bots: makeBots(seed, botDesks),
+      bots: makeBots(seed, botDesks, pickLevel(level)),
       seats,
       names: new Map(humans.map((other, i) => [SEAT_ORDER[i]!, this.tag(other)!.name ?? ''])),
       acks: new Map(),
@@ -206,7 +206,7 @@ export class RoomHost extends DurableObject<Env> {
 
   send(ws: WebSocket, game: Game) {
     const player = this.tag(ws)!.player
-    const view = viewOf(game.room, game.names)
+    const view = viewOf(game.room, game.names, game.bots.level)
     this.post(ws, { t: 'state', game: game.id, you: game.seats.get(player) ?? null, ack: game.acks.get(player) ?? 0, view, events: game.events })
   }
 
