@@ -2,7 +2,7 @@
 
 a typing battle royale in a dark basement. you and seven other desks type the same lines, and every third slip or the clock running out makes the device on your desk cut one of its six wires. five are safe and one isnt, and every safe cut makes the next one worse. whoever finishes a round last gets a cut anyway, last desk still lit wins.
 
-play it at https://ryzee34.github.io/project-bomb-desk/ (needs a keyboard, sounds best with headphones). sit down for a solo game against seven bots, or hit play with friends to open a room and send the link around. the host picks how many bots fill the empty desks, anywhere from none to a full table.
+play it at https://ryzee34.github.io/project-bomb-desk/ (needs a keyboard, sounds best with headphones). sit down for a solo game against seven bots, or hit play with friends to open a room and send the link around. the host picks how many bots fill the empty desks, anywhere from none to a full table. put a name in on the table card and everyone sees it on your desk instead of a number.
 
 my first repo back in 2022 was a speed typing test, this is the grown up version.
 
