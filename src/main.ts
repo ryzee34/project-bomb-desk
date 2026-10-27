@@ -40,6 +40,7 @@ let spin: Spin | null = null
 let spinShown = -1
 let renameTimer = 0
 let escAt = 0
+let badUntil = 0
 
 const me = () => (play.you === null ? null : deskById(play.room, play.you))
 const playing = () => {
@@ -83,7 +84,7 @@ function refresh() {
   }
   const waiting = alive(room).filter(d => !d.done).length
   if (playing() && desk.done && room.phase === 'typing' && !desk.roll && waiting) strip.note(`Round done. Waiting on ${plural(waiting, 'desk')}.`)
-  else strip.show(currentLine(room, desk), desk.pos)
+  else strip.show(currentLine(room, desk), desk.pos, performance.now() < badUntil)
   if (desk.out) {
     const left = alive(room).length
     $('#deadRoom').textContent = room.phase === 'over' && room.winner ? `${called(room.winner)} ${play.names.get(room.winner) ? 'had' : 'was'} the last desk lit.` : `${plural(left, 'desk')} still lit.`
@@ -169,11 +170,7 @@ function handle(events: RoomEvent[]) {
         hurt()
         scene.shake(0.012)
         strip.shake()
-        strip.show(currentLine(play.room, desk), desk.pos, true)
-        setTimeout(() => {
-          const now = me()
-          if (now && !now.roll) strip.show(currentLine(play.room, now), now.pos)
-        }, 220)
+        badUntil = performance.now() + 220
         break
       case 'roll': {
         const remaining = Array.from({ length: WIRES }, (_, i) => i).filter(i => !desk.cut.includes(i))
@@ -244,6 +241,7 @@ addEventListener('keydown', e => {
   scene.pressKey(e.key)
   const events = play.press(e.key)
   if (events.length) sfx.key()
+  else if (me()?.missed) badUntil = performance.now() + 220
   handle(events)
 })
 

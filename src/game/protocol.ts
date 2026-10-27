@@ -12,6 +12,7 @@ export interface DeskView {
   lineLeft: number
   linesTyped: number
   slips: number
+  missed: boolean
   cut: number[]
   roll: Roll | null
   done: boolean
@@ -65,6 +66,7 @@ export function viewOf(room: Room, people: Map<number, string>, level: number): 
       lineLeft: desk.lineLeft,
       linesTyped: desk.linesTyped,
       slips: desk.slips,
+      missed: desk.missed,
       cut: [...desk.cut],
       roll: desk.roll && { ...desk.roll },
       done: desk.done,
@@ -101,5 +103,5 @@ export function applyView(room: Room, view: RoomView) {
   room.lastCut = view.lastCut
   room.winner = view.winner
   room.finished = Math.max(0, ...view.desks.map(desk => desk.finishedAs))
-  room.desks = view.desks.map((desk): Desk => ({ ...desk, cut: [...desk.cut], roll: desk.roll && { ...desk.roll }, live: -1 }))
+  room.desks = view.desks.map((desk): Desk => ({ ...desk, missed: desk.missed ?? false, cut: [...desk.cut], roll: desk.roll && { ...desk.roll }, live: -1 }))
 }
