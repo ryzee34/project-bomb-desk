@@ -1,9 +1,12 @@
 import type { Line } from './lines'
 import type { Desk, Roll, Room, RoomEvent } from './room'
 
+export const NAME_LENGTH = 16
+
 export interface DeskView {
   id: number
   human: boolean
+  name: string
   lineIdx: number
   pos: number
   lineLeft: number
@@ -27,13 +30,23 @@ export interface RoomView {
   desks: DeskView[]
 }
 
-export type ClientMessage = { t: 'join'; player: string } | { t: 'start'; bots?: number } | { t: 'key'; k: string; s: number }
+export type ClientMessage =
+  | { t: 'join'; player: string; name?: string }
+  | { t: 'name'; name: string }
+  | { t: 'start'; bots?: number }
+  | { t: 'key'; k: string; s: number }
 
 export type ServerMessage =
-  | { t: 'lobby'; host: boolean; people: number; playing: boolean }
+  | { t: 'lobby'; host: boolean; people: number; names: string[]; playing: boolean }
   | { t: 'state'; game: number; you: number | null; ack: number; view: RoomView; events: RoomEvent[] }
 
-export function viewOf(room: Room, humans: Set<number>): RoomView {
+export function cleanName(name: unknown) {
+  if (typeof name !== 'string') return ''
+  const flat = name.replace(/\p{C}/gu, '').replace(/\s+/g, ' ').trim()
+  return [...flat].slice(0, NAME_LENGTH).join('').trim()
+}
+
+export function viewOf(room: Room, people: Map<number, string>): RoomView {
   return {
     round: room.round,
     lines: room.lines,
@@ -43,7 +56,8 @@ export function viewOf(room: Room, humans: Set<number>): RoomView {
     winner: room.winner,
     desks: room.desks.map(desk => ({
       id: desk.id,
-      human: humans.has(desk.id),
+      human: people.has(desk.id),
+      name: people.get(desk.id) ?? '',
       lineIdx: desk.lineIdx,
       pos: desk.pos,
       lineLeft: desk.lineLeft,

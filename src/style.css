@@ -248,6 +248,13 @@ body {
   align-items: center;
 }
 
+.desk .who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .desk .dot {
   width: 8px;
   height: 8px;
@@ -421,6 +428,24 @@ body {
   background: rgba(236, 230, 216, 0.06);
   border: 1px solid #3a3631;
   padding: 0 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field input {
+  font: 400 15px var(--font-mono);
+  color: var(--ink);
+  background: rgba(236, 230, 216, 0.06);
+  border: 1px solid #3a3631;
+  padding: 11px 12px;
+}
+
+.field input:focus-visible {
+  outline: 2px solid var(--lamp);
+  outline-offset: 1px;
 }
 
 .bots {

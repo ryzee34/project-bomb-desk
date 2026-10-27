@@ -10,7 +10,7 @@ export function createRoomPanel(el: HTMLElement) {
   let rows = new Map<number, Row>()
   let label = ''
 
-  function build(room: Room, you: number | null, humans: Set<number>) {
+  function build(room: Room, you: number | null, humans: Set<number>, names: Map<number, string>) {
     const heading = document.createElement('h2')
     heading.textContent = 'The room'
     rows = new Map()
@@ -20,7 +20,14 @@ export function createRoomPanel(el: HTMLElement) {
       const dot = document.createElement('span')
       dot.className = 'dot'
       const name = document.createElement('span')
-      name.textContent = desk.id === you ? `Desk ${desk.id} \u00b7 you` : humans.has(desk.id) ? `Desk ${desk.id} \u00b7 player` : `Desk ${desk.id}`
+      name.className = 'who'
+      const called = names.get(desk.id)
+      name.textContent =
+        desk.id === you
+          ? `${called || `Desk ${desk.id}`} \u00b7 you`
+          : humans.has(desk.id)
+            ? called || `Desk ${desk.id} \u00b7 player`
+            : `Desk ${desk.id} \u00b7 bot`
       const odds = document.createElement('span')
       odds.className = 'odds'
       const track = document.createElement('span')
@@ -35,11 +42,11 @@ export function createRoomPanel(el: HTMLElement) {
   }
 
   return {
-    render(room: Room, you: number | null, humans: Set<number>) {
-      const key = `${room.desks.map(desk => desk.id).join()}|${you}|${[...humans].join()}`
+    render(room: Room, you: number | null, humans: Set<number>, names: Map<number, string>) {
+      const key = JSON.stringify([room.desks.map(desk => desk.id), you, [...humans], [...names]])
       if (key !== label) {
         label = key
-        build(room, you, humans)
+        build(room, you, humans, names)
       }
       for (const desk of room.desks) {
         const row = rows.get(desk.id)!

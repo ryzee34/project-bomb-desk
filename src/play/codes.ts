@@ -21,6 +21,20 @@ export function playerId() {
   }
 }
 
+export function savedName() {
+  try {
+    return localStorage.getItem('bomb-desk-name') ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export function saveName(name: string) {
+  try {
+    localStorage.setItem('bomb-desk-name', name)
+  } catch {}
+}
+
 export function roomFromUrl() {
   const code = new URLSearchParams(location.search).get('room')?.toLowerCase() ?? ''
   return /^[a-z0-9]{4,12}$/.test(code) ? code : null

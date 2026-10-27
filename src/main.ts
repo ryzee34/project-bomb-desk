@@ -2,7 +2,8 @@ import './style.css'
 import { sfx, startAudio } from './audio/sound'
 import { alive, currentLine, deskById, wiresLeft, type RoomEvent } from './game/room'
 import { DESKS, MIN_DESKS, SPIN_MS, WIRES, WIRE_NAMES } from './game/rules'
-import { newCode, playerId, roomFromUrl, roomLink, setRoomInUrl } from './play/codes'
+import { cleanName } from './game/protocol'
+import { newCode, playerId, roomFromUrl, roomLink, saveName, savedName, setRoomInUrl } from './play/codes'
 import { localPlay } from './play/local'
 import type { Play } from './play/play'
 import { joinRoom, type Lobby, type Table } from './play/remote'
@@ -28,13 +29,14 @@ let play: Play = localPlay(Date.now())
 let live = false
 let code = roomFromUrl()
 let table: Table | null = null
-let lobby: Lobby = { host: false, people: 0, playing: false }
+let lobby: Lobby = { host: false, people: 0, names: [], playing: false }
 let bots: number | null = null
 let shownDisplay = ''
 let shownSeconds = -1
 let statusTimer = 0
 let spin: Spin | null = null
 let spinShown = -1
+let renameTimer = 0
 
 const me = () => (play.you === null ? null : deskById(play.room, play.you))
 const playing = () => {
@@ -45,6 +47,8 @@ const calm = () => playing() && !me()!.roll
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 const openDesks = () => DESKS.length - Math.min(lobby.people, DESKS.length)
 const botCount = () => Math.min(bots ?? openDesks(), openDesks())
+const called = (id: number) => play.names.get(id) || `Desk ${id}`
+const its = (id: number) => (play.names.get(id) ? 'their' : 'its')
 const ordinal = (n: number) => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th'}`
 
 function show(card: string | null) {
@@ -59,7 +63,7 @@ function flashStatus(text: string, ms = 2200) {
 
 function refresh() {
   const room = play.room
-  panel.render(room, play.you, play.humans)
+  panel.render(room, play.you, play.humans, play.names)
   if (room.phase === 'break') $('#breakCount').textContent = `Round ${room.round + 1} in ${Math.max(1, Math.ceil(room.breakLeft / 1000))}`
   const desk = me()
   if (!desk) return
@@ -78,7 +82,7 @@ function refresh() {
   else strip.show(currentLine(room, desk), desk.pos)
   if (desk.out) {
     const left = alive(room).length
-    $('#deadRoom').textContent = room.phase === 'over' && room.winner ? `Desk ${room.winner} was the last desk lit.` : `${plural(left, 'desk')} still lit.`
+    $('#deadRoom').textContent = room.phase === 'over' && room.winner ? `${called(room.winner)} ${play.names.get(room.winner) ? 'had' : 'was'} the last desk lit.` : `${plural(left, 'desk')} still lit.`
   }
 }
 
@@ -135,7 +139,7 @@ function win() {
 
 function distantDesk(event: RoomEvent) {
   if (!('desk' in event)) return
-  const name = `Desk ${event.desk}`
+  const name = called(event.desk)
   if (event.type === 'out') {
     setTimeout(() => {
       sfx.thump()
@@ -144,8 +148,8 @@ function distantDesk(event: RoomEvent) {
       if (calm()) flashStatus(`${name} went dark.`)
     }, Math.random() * 500)
   }
-  if (event.type === 'roll' && event.reason === 'last' && calm()) setStatus(`${name} finished last. Its device is choosing a wire.`)
-  if (event.type === 'cut' && deskById(play.room, event.desk).done && play.room.lastCut && calm()) flashStatus(`${name} kept its light.`)
+  if (event.type === 'roll' && event.reason === 'last' && calm()) setStatus(`${name} finished last. ${its(event.desk) === 'its' ? 'Its' : 'Their'} device is choosing a wire.`)
+  if (event.type === 'cut' && deskById(play.room, event.desk).done && play.room.lastCut && calm()) flashStatus(`${name} kept ${its(event.desk)} light.`)
 }
 
 function handle(events: RoomEvent[]) {
@@ -216,7 +220,7 @@ function handle(events: RoomEvent[]) {
 }
 
 addEventListener('keydown', e => {
-  if (!playing()) return
+  if (e.target instanceof HTMLInputElement || !playing()) return
   if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return
   if (e.key.length !== 1) return
   e.preventDefault()
@@ -255,7 +259,8 @@ function begin(next: Play) {
   scene.relight()
   const desk = me()
   for (const wire of desk?.cut ?? []) scene.cutWire(wire)
-  document.querySelectorAll('.desk-name').forEach(el => (el.textContent = desk ? `Desk ${desk.id}` : 'Watching'))
+  const title = !desk ? 'Watching' : play.names.get(desk.id) ? `${play.names.get(desk.id)} \u00b7 Desk ${desk.id}` : `Desk ${desk.id}`
+  document.querySelectorAll('.desk-name').forEach(el => (el.textContent = title))
   $('#strip').hidden = !desk || desk.out
   $('#room').hidden = false
   setStatus('')
@@ -276,7 +281,12 @@ function renderLobby() {
   $('#lobbyCode').textContent = `Room ${code}`
   const extra = botCount()
   const total = Math.min(lobby.people, DESKS.length) + extra
-  $('#lobbyText').textContent = `${lobby.people === 1 ? 'Just you' : `${lobby.people} people`} at the table so far. Send the link to friends, and the host picks how many bots take the empty desks.`
+  const named = lobby.names.filter(Boolean)
+  const guests = lobby.people - named.length
+  const who = [...named, ...(guests ? [plural(guests, 'guest')] : [])]
+  const list = who.length > 1 ? `${who.slice(0, -1).join(', ')} and ${who.at(-1)}` : who[0]
+  const seatedText = lobby.people <= 1 ? 'Just you at the table so far.' : `${list} are at the table so far.`
+  $('#lobbyText').textContent = `${seatedText} Send the link to friends, and the host picks how many bots take the empty desks.`
   $<HTMLInputElement>('#lobbyLink').value = roomLink(code)
   $('#botsRow').hidden = !lobby.host || lobby.playing
   $('#botCount').textContent = String(extra)
@@ -306,7 +316,7 @@ function sitAtTable(room: string) {
   $('#room').hidden = true
   show('#lobby')
   renderLobby()
-  table = joinRoom(ROOMS_URL, room, playerId(), {
+  table = joinRoom(ROOMS_URL, room, playerId(), () => cleanName($<HTMLInputElement>('#playerName').value), {
     lobby(next) {
       lobby = next
       renderLobby()
@@ -384,6 +394,15 @@ $('#moreBots').addEventListener('click', () => {
   renderLobby()
 })
 $('#leaveRoom').addEventListener('click', leaveTable)
+$<HTMLInputElement>('#playerName').value = savedName()
+$('#playerName').addEventListener('input', () => {
+  clearTimeout(renameTimer)
+  renameTimer = window.setTimeout(() => {
+    const name = cleanName($<HTMLInputElement>('#playerName').value)
+    saveName(name)
+    table?.rename(name)
+  }, 400)
+})
 $('#copyLink').addEventListener('click', async () => {
   const input = $<HTMLInputElement>('#lobbyLink')
   try {

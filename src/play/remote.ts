@@ -5,11 +5,13 @@ import type { Play } from './play'
 export interface Lobby {
   host: boolean
   people: number
+  names: string[]
   playing: boolean
 }
 
 export interface Table {
   start(bots: number): void
+  rename(name: string): void
   leave(): void
 }
 
@@ -21,6 +23,7 @@ class Mirror implements Play {
   room: Room
   you: number | null
   humans = new Set<number>()
+  names = new Map<number, string>()
   game: number
   seq = 0
   pending: { s: number; k: string }[] = []
@@ -58,7 +61,9 @@ class Mirror implements Play {
   sync(msg: State) {
     applyView(this.room, msg.view)
     this.you = msg.you
-    this.humans = new Set(msg.view.desks.filter(desk => desk.human).map(desk => desk.id))
+    const humans = msg.view.desks.filter(desk => desk.human)
+    this.humans = new Set(humans.map(desk => desk.id))
+    this.names = new Map(humans.map(desk => [desk.id, desk.name ?? '']))
     this.pending = this.pending.filter(key => key.s > msg.ack)
     if (this.you !== null) for (const key of this.pending) press(this.room, this.you, key.k, false)
     this.queue.push(...msg.events.filter(event => !('desk' in event && event.desk === this.you && PREDICTED.has(event.type))))
@@ -74,6 +79,7 @@ export function joinRoom(
   url: string,
   code: string,
   player: string,
+  name: () => string,
   on: { lobby(lobby: Lobby): void; game(play: Play): void; lost(): void; back(): void },
 ): Table {
   let ws: WebSocket
@@ -90,12 +96,12 @@ export function joinRoom(
     ws.onopen = () => {
       tries = 0
       mirror?.reset()
-      send({ t: 'join', player })
+      send({ t: 'join', player, name: name() })
       on.back()
     }
     ws.onmessage = e => {
       const msg: ServerMessage = JSON.parse(e.data)
-      if (msg.t === 'lobby') return on.lobby({ host: msg.host, people: msg.people, playing: msg.playing })
+      if (msg.t === 'lobby') return on.lobby({ host: msg.host, people: msg.people, names: msg.names ?? [], playing: msg.playing })
       if (mirror && mirror.game === msg.game) return mirror.sync(msg)
       mirror = new Mirror(msg, send)
       on.game(mirror)
@@ -110,6 +116,7 @@ export function joinRoom(
   open()
   return {
     start: bots => send({ t: 'start', bots }),
+    rename: next => send({ t: 'name', name: next }),
     leave() {
       left = true
       ws.close()

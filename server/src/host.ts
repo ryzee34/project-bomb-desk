@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers'
 import { addBot, driveBots, dropBot, makeBots, type Bots } from '../../src/game/bots'
-import { viewOf, type ClientMessage, type ServerMessage } from '../../src/game/protocol'
+import { cleanName, viewOf, type ClientMessage, type ServerMessage } from '../../src/game/protocol'
 import { advance, createRoom, deskById, press, type Room, type RoomEvent } from '../../src/game/room'
 import { MIN_DESKS } from '../../src/game/rules'
 
@@ -18,6 +18,7 @@ const MAX_SOCKETS = 32
 
 interface Tag {
   player: string
+  name: string
   joinedAt: number
 }
 
@@ -31,6 +32,7 @@ interface Game {
   room: Room
   bots: Bots
   seats: Map<string, number>
+  names: Map<number, string>
   acks: Map<string, number>
   buckets: Map<string, Bucket>
   events: RoomEvent[]
@@ -56,9 +58,10 @@ export class RoomHost extends DurableObject<Env> {
     } catch {
       return
     }
-    if (msg.t === 'join') return this.join(ws, msg.player)
+    if (msg.t === 'join') return this.join(ws, msg.player, msg.name)
     const tag = this.tag(ws)
     if (!tag) return
+    if (msg.t === 'name') return this.rename(ws, tag, msg.name)
     if (msg.t === 'start') return this.start(ws, msg.bots)
     if (msg.t === 'key') return this.key(tag.player, msg.k, msg.s)
   }
@@ -89,19 +92,29 @@ export class RoomHost extends DurableObject<Env> {
     return !!this.game && this.game.room.phase !== 'over'
   }
 
-  join(ws: WebSocket, player: unknown) {
+  join(ws: WebSocket, player: unknown, name: unknown) {
     if (typeof player !== 'string' || !/^[a-z0-9]{8,32}$/.test(player) || this.tag(ws)) return
     if (this.joined().length >= MAX_SOCKETS) return ws.close(1013, 'room full')
     for (const other of this.joined()) if (this.tag(other)!.player === player) other.close(1000, 'replaced')
-    ws.serializeAttachment({ player, joinedAt: Date.now() } satisfies Tag)
+    ws.serializeAttachment({ player, name: cleanName(name), joinedAt: Date.now() } satisfies Tag)
     const game = this.game
     const desk = game?.seats.get(player)
     if (game && desk !== undefined) {
       game.acks.set(player, 0)
+      game.names.set(desk, cleanName(name))
       if (!deskById(game.room, desk).out) dropBot(game.bots, desk)
     }
     this.lobby()
     if (game) this.send(ws, game)
+  }
+
+  rename(ws: WebSocket, tag: Tag, raw: unknown) {
+    const name = cleanName(raw)
+    if (name === tag.name) return
+    ws.serializeAttachment({ ...tag, name } satisfies Tag)
+    const desk = this.game?.seats.get(tag.player)
+    if (desk !== undefined) this.game!.names.set(desk, name)
+    this.lobby()
   }
 
   leave(ws: WebSocket) {
@@ -133,6 +146,7 @@ export class RoomHost extends DurableObject<Env> {
       room: createRoom(seed, [...seats.values(), ...botDesks].sort((a, b) => a - b)),
       bots: makeBots(seed, botDesks),
       seats,
+      names: new Map(humans.map((other, i) => [SEAT_ORDER[i]!, this.tag(other)!.name ?? ''])),
       acks: new Map(),
       buckets: new Map(),
       events: [],
@@ -192,13 +206,14 @@ export class RoomHost extends DurableObject<Env> {
 
   send(ws: WebSocket, game: Game) {
     const player = this.tag(ws)!.player
-    const view = viewOf(game.room, new Set(game.seats.values()))
+    const view = viewOf(game.room, game.names)
     this.post(ws, { t: 'state', game: game.id, you: game.seats.get(player) ?? null, ack: game.acks.get(player) ?? 0, view, events: game.events })
   }
 
   lobby() {
     const people = this.joined()
-    for (const ws of people) this.post(ws, { t: 'lobby', host: ws === people[0], people: people.length, playing: this.playing() })
+    const names = people.map(ws => this.tag(ws)!.name ?? '')
+    for (const ws of people) this.post(ws, { t: 'lobby', host: ws === people[0], people: people.length, names, playing: this.playing() })
   }
 
   post(ws: WebSocket, msg: ServerMessage) {

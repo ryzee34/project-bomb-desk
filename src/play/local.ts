@@ -10,6 +10,7 @@ export function localPlay(seed: number): Play {
     room,
     you: YOUR_DESK,
     humans: new Set([YOUR_DESK]),
+    names: new Map(),
     press: key => press(room, YOUR_DESK, key),
     tick: ms => [...driveBots(room, bots, ms), ...advance(room, ms)],
   }
