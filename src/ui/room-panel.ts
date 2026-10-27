@@ -1,5 +1,4 @@
 import { progress, wiresLeft, type Room } from '../game/room'
-import { YOUR_DESK } from '../game/rules'
 
 interface Row {
   el: HTMLDivElement
@@ -9,18 +8,19 @@ interface Row {
 
 export function createRoomPanel(el: HTMLElement) {
   let rows = new Map<number, Row>()
+  let label = ''
 
-  function build(room: Room) {
+  function build(room: Room, you: number | null, humans: Set<number>) {
     const heading = document.createElement('h2')
     heading.textContent = 'The room'
     rows = new Map()
     const els = room.desks.map(desk => {
       const row = document.createElement('div')
-      row.className = desk.id === YOUR_DESK ? 'desk you' : 'desk'
+      row.className = desk.id === you ? 'desk you' : 'desk'
       const dot = document.createElement('span')
       dot.className = 'dot'
       const name = document.createElement('span')
-      name.textContent = desk.id === YOUR_DESK ? `Desk ${desk.id} \u00b7 you` : `Desk ${desk.id}`
+      name.textContent = desk.id === you ? `Desk ${desk.id} \u00b7 you` : humans.has(desk.id) ? `Desk ${desk.id} \u00b7 player` : `Desk ${desk.id}`
       const odds = document.createElement('span')
       odds.className = 'odds'
       const track = document.createElement('span')
@@ -35,8 +35,12 @@ export function createRoomPanel(el: HTMLElement) {
   }
 
   return {
-    render(room: Room) {
-      if (rows.size !== room.desks.length || room.desks.some(desk => !rows.has(desk.id))) build(room)
+    render(room: Room, you: number | null, humans: Set<number>) {
+      const key = `${room.desks.map(desk => desk.id).join()}|${you}|${[...humans].join()}`
+      if (key !== label) {
+        label = key
+        build(room, you, humans)
+      }
       for (const desk of room.desks) {
         const row = rows.get(desk.id)!
         row.el.classList.toggle('out', desk.out)

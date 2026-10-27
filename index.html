@@ -18,7 +18,7 @@
     <div class="flash" id="flash"></div>
 
     <div class="hud">
-      <div><strong>Desk 4</strong> &nbsp;&middot;&nbsp; round <span id="round">1</span> &nbsp;&middot;&nbsp; line <span id="line">1</span> of 3</div>
+      <div><strong class="desk-name">Desk 4</strong> &nbsp;&middot;&nbsp; round <span id="round">1</span> &nbsp;&middot;&nbsp; line <span id="line">1</span> of 3</div>
       <div class="right">
         <div class="timer" id="timer">0:40</div>
         <div class="pips" aria-label="Slips"><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
@@ -32,18 +32,38 @@
 
     <div class="overlay" id="intro">
       <div class="card">
-        <p class="eyebrow">Desk 4</p>
+        <p class="eyebrow" id="introEyebrow">8 desks &middot; 6 wires</p>
         <h1>BOMB DESK</h1>
-        <p>You're at desk 4 of 8 in a basement. Type each line exactly as it's written. Every third slip, or the clock running out, makes the device on your desk cut one of its six wires. Five are safe. One isn't, and every safe cut makes the next one worse.</p>
+        <p>You're at one of 8 desks in a basement. Type each line exactly as it's written. Every third slip, or the clock running out, makes the device on your desk cut one of its six wires. Five are safe. One isn't, and every safe cut makes the next one worse.</p>
         <p>Whoever finishes a round last gets a cut anyway. The last desk still lit wins.</p>
         <p class="small">Headphones on &middot; capitals don't matter &middot; needs a keyboard</p>
-        <button class="btn" id="start">Sit down</button>
+        <div class="actions">
+          <button class="btn" id="start">Sit down</button>
+          <button class="btn ghost" id="friends">Play with friends</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="lobby" hidden>
+      <div class="card">
+        <p class="eyebrow" id="lobbyCode">Room</p>
+        <h2>The table</h2>
+        <p id="lobbyText"></p>
+        <div class="share">
+          <input id="lobbyLink" readonly aria-label="Room link" />
+          <button class="btn ghost" id="copyLink">Copy link</button>
+        </div>
+        <p class="small" id="lobbyState"></p>
+        <div class="actions">
+          <button class="btn" id="startGame" hidden>Start the game</button>
+          <button class="btn ghost" id="leaveRoom">Play solo instead</button>
+        </div>
       </div>
     </div>
 
     <div class="overlay" id="dead" hidden>
       <div class="card">
-        <p class="eyebrow">Desk 4</p>
+        <p class="eyebrow desk-name">Desk 4</p>
         <h2>Your desk went dark</h2>
         <p id="deadText"></p>
         <p class="small" id="deadRoom"></p>
@@ -62,7 +82,7 @@
 
     <div class="overlay" id="won" hidden>
       <div class="card">
-        <p class="eyebrow">Desk 4</p>
+        <p class="eyebrow desk-name">Desk 4</p>
         <h2>Last desk lit</h2>
         <p id="wonText"></p>
         <button class="btn" id="replay">Play again</button>
