@@ -12,7 +12,8 @@ export interface Env {
 const SEAT_ORDER = [4, 2, 6, 8, 1, 3, 5, 7]
 const TICK_MS = 50
 const SYNC_MS = 250
-const MIN_KEY_MS = 35
+const BURST = 8
+const KEYS_PER_SECOND = 20
 const MAX_SOCKETS = 32
 
 interface Tag {
@@ -20,12 +21,18 @@ interface Tag {
   joinedAt: number
 }
 
+interface Bucket {
+  tokens: number
+  at: number
+}
+
 interface Game {
+  id: number
   room: Room
   bots: Bots
   seats: Map<string, number>
   acks: Map<string, number>
-  lastKey: Map<string, number>
+  buckets: Map<string, Bucket>
   events: RoomEvent[]
   last: number
   synced: number
@@ -118,11 +125,12 @@ export class RoomHost extends DurableObject<Env> {
     const taken = new Set(seats.values())
     const now = Date.now()
     this.game = {
+      id: now,
       room: createRoom(seed, DESKS),
       bots: makeBots(seed, DESKS.filter(id => !taken.has(id))),
       seats,
       acks: new Map(),
-      lastKey: new Map(),
+      buckets: new Map(),
       events: [],
       last: now,
       synced: 0,
@@ -140,8 +148,12 @@ export class RoomHost extends DurableObject<Env> {
     game.acks.set(player, seq)
     if (typeof key !== 'string' || key.length !== 1 || !this.playing()) return
     const now = Date.now()
-    if (now - (game.lastKey.get(player) ?? 0) < MIN_KEY_MS) return
-    game.lastKey.set(player, now)
+    const bucket = game.buckets.get(player) ?? { tokens: BURST, at: now }
+    bucket.tokens = Math.min(BURST, bucket.tokens + ((now - bucket.at) * KEYS_PER_SECOND) / 1000)
+    bucket.at = now
+    game.buckets.set(player, bucket)
+    if (bucket.tokens < 1) return
+    bucket.tokens--
     game.events.push(...press(game.room, desk, key))
   }
 
@@ -177,7 +189,7 @@ export class RoomHost extends DurableObject<Env> {
   send(ws: WebSocket, game: Game) {
     const player = this.tag(ws)!.player
     const view = viewOf(game.room, new Set(game.seats.values()))
-    this.post(ws, { t: 'state', you: game.seats.get(player) ?? null, ack: game.acks.get(player) ?? 0, view, events: game.events })
+    this.post(ws, { t: 'state', game: game.id, you: game.seats.get(player) ?? null, ack: game.acks.get(player) ?? 0, view, events: game.events })
   }
 
   lobby() {

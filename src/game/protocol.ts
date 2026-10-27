@@ -31,7 +31,7 @@ export type ClientMessage = { t: 'join'; player: string } | { t: 'start' } | { t
 
 export type ServerMessage =
   | { t: 'lobby'; host: boolean; people: number; playing: boolean }
-  | { t: 'state'; you: number | null; ack: number; view: RoomView; events: RoomEvent[] }
+  | { t: 'state'; game: number; you: number | null; ack: number; view: RoomView; events: RoomEvent[] }
 
 export function viewOf(room: Room, humans: Set<number>): RoomView {
   return {
@@ -77,8 +77,9 @@ export function mirrorOf(view: RoomView): Room {
 }
 
 export function applyView(room: Room, view: RoomView) {
+  const text = (lines: Line[]) => lines.map(line => line.text).join('\n')
   room.round = view.round
-  room.lines = view.lines
+  if (text(room.lines) !== text(view.lines)) room.lines = view.lines
   room.phase = view.phase
   room.breakLeft = view.breakLeft
   room.lastCut = view.lastCut
