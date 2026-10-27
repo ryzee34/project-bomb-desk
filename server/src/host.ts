@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers'
-import { addBot, driveBots, dropBot, makeBots, pickLevel, type Bots } from '../../src/game/bots'
+import { addBot, driveBots, dropBot, makeBots, NORMAL, pickLevel, type Bots } from '../../src/game/bots'
 import { cleanName, viewOf, type ClientMessage, type ServerMessage } from '../../src/game/protocol'
 import { advance, createRoom, deskById, press, type Room, type RoomEvent } from '../../src/game/room'
 import { MIN_DESKS } from '../../src/game/rules'
@@ -20,6 +20,12 @@ interface Tag {
   player: string
   name: string
   joinedAt: number
+  setup?: Setup
+}
+
+interface Setup {
+  bots: number | null
+  level: number
 }
 
 interface Bucket {
@@ -62,6 +68,7 @@ export class RoomHost extends DurableObject<Env> {
     const tag = this.tag(ws)
     if (!tag) return
     if (msg.t === 'name') return this.rename(ws, tag, msg.name)
+    if (msg.t === 'setup') return this.setup(ws, tag, msg.bots, msg.level)
     if (msg.t === 'start') return this.start(ws, msg.bots, msg.level)
     if (msg.t === 'key') return this.key(tag.player, msg.k, msg.s)
   }
@@ -114,6 +121,13 @@ export class RoomHost extends DurableObject<Env> {
     ws.serializeAttachment({ ...tag, name } satisfies Tag)
     const desk = this.game?.seats.get(tag.player)
     if (desk !== undefined) this.game!.names.set(desk, name)
+    this.lobby()
+  }
+
+  setup(ws: WebSocket, tag: Tag, bots: unknown, level: unknown) {
+    if (this.joined()[0] !== ws) return
+    const count = typeof bots === 'number' && Number.isInteger(bots) ? Math.min(Math.max(bots, 0), SEAT_ORDER.length) : null
+    ws.serializeAttachment({ ...tag, setup: { bots: count, level: pickLevel(level) } } satisfies Tag)
     this.lobby()
   }
 
@@ -213,7 +227,13 @@ export class RoomHost extends DurableObject<Env> {
   lobby() {
     const people = this.joined()
     const names = people.map(ws => this.tag(ws)!.name ?? '')
-    for (const ws of people) this.post(ws, { t: 'lobby', host: ws === people[0], people: people.length, names, playing: this.playing() })
+    const setup = people[0] && this.tag(people[0])!.setup
+    const open = SEAT_ORDER.length - Math.min(people.length, SEAT_ORDER.length)
+    const bots = Math.min(setup?.bots ?? open, open)
+    const level = setup?.level ?? NORMAL
+    people.forEach((ws, you) =>
+      this.post(ws, { t: 'lobby', host: you === 0, you, people: people.length, names, bots, level, playing: this.playing() }),
+    )
   }
 
   post(ws: WebSocket, msg: ServerMessage) {

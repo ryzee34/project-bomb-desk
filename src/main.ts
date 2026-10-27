@@ -1,6 +1,6 @@
 import './style.css'
 import { sfx, startAudio } from './audio/sound'
-import { LEVELS, pickLevel } from './game/bots'
+import { LEVELS, NORMAL, pickLevel } from './game/bots'
 import { alive, currentLine, deskById, odds, wiresLeft, type RoomEvent } from './game/room'
 import { DESKS, EARLY_ROUNDS, MIN_DESKS, SPIN_MS, WIRES, WIRE_NAMES } from './game/rules'
 import { cleanName } from './game/protocol'
@@ -12,6 +12,7 @@ import { createDeskScene } from './scene/desk'
 import { planSpin, spinStep, type Spin } from './scene/spin'
 import { paintGrain } from './ui/film'
 import { flashWhite, hurt, renderHud, setStatus } from './ui/hud'
+import { createLights } from './ui/lights'
 import { createRoomPanel } from './ui/room-panel'
 import { createStrip } from './ui/strip'
 
@@ -25,13 +26,14 @@ paintGrain($('#grain'))
 const scene = createDeskScene($('#scene'), reduced)
 const strip = createStrip($('#strip'))
 const panel = createRoomPanel($('#room'))
+const lights = createLights($('#lobbyLights'))
 
 let level = pickLevel(savedLevel())
 let play: Play = localPlay(Date.now(), level)
 let live = false
 let code = roomFromUrl()
 let table: Table | null = null
-let lobby: Lobby = { host: false, people: 0, names: [], playing: false }
+let lobby: Lobby = { host: false, you: 0, people: 0, names: [], bots: null, level: NORMAL, playing: false }
 let bots: number | null = null
 let shownDisplay = ''
 let shownSeconds = -1
@@ -297,12 +299,16 @@ function renderLobby() {
   $('#lobbyCode').textContent = `Room ${code}`
   const extra = botCount()
   const total = Math.min(lobby.people, DESKS.length) + extra
-  const named = lobby.names.filter(Boolean)
-  const guests = lobby.people - named.length
-  const who = [...named, ...(guests ? [plural(guests, 'guest')] : [])]
-  const list = who.length > 1 ? `${who.slice(0, -1).join(', ')} and ${who.at(-1)}` : who[0]
-  const seatedText = lobby.people <= 1 ? 'Just you at the table so far.' : `${list} are at the table so far.`
-  $('#lobbyText').textContent = `${seatedText} Send the link to friends, and the host picks how many bots take the empty desks.`
+  const waiting = lobby.people - DESKS.length
+  const plan = lobby.host
+    ? 'Send the link to friends, then pick how many bots take the empty desks.'
+    : lobby.bots === null
+      ? 'Send the link to friends. The host picks how many bots take the empty desks.'
+      : lobby.bots
+        ? `Send the link to friends. The host is filling ${plural(lobby.bots, 'empty desk')} with ${LEVELS[lobby.level]!.name} bots.`
+        : 'Send the link to friends. The host is playing without bots.'
+  $('#lobbyText').textContent = waiting > 0 ? `${plan} The table seats ${DESKS.length}, so ${plural(waiting, 'player')} will watch.` : plan
+  lights.render(lobby.names.slice(0, DESKS.length), lobby.you, lobby.host ? extra : (lobby.bots ?? 0))
   $<HTMLInputElement>('#lobbyLink').value = roomLink(code)
   $('#botsRow').hidden = !lobby.host || lobby.playing
   $('#lobbyLevels').hidden = !lobby.host || lobby.playing
@@ -336,6 +342,7 @@ function sitAtTable(room: string) {
   table = joinRoom(ROOMS_URL, room, playerId(), () => cleanName($<HTMLInputElement>('#playerName').value), {
     lobby(next) {
       lobby = next
+      if (next.host && (next.bots !== botCount() || next.level !== level)) table?.setup(bots, level)
       renderLobby()
     },
     game(next) {
@@ -408,11 +415,13 @@ for (const id of ['#again', '#replay']) {
 $('#startGame').addEventListener('click', () => table?.start(botCount(), level))
 $('#fewerBots').addEventListener('click', () => {
   bots = Math.max(0, botCount() - 1)
+  table?.setup(bots, level)
   renderLobby()
 })
 $('#moreBots').addEventListener('click', () => {
   const next = botCount() + 1
   bots = next >= openDesks() ? null : next
+  table?.setup(bots, level)
   renderLobby()
 })
 document.querySelectorAll<HTMLButtonElement>('[data-menu]').forEach(button =>
@@ -432,6 +441,7 @@ for (const group of document.querySelectorAll('.levels')) {
       button.addEventListener('click', () => {
         level = i
         saveLevel(i)
+        table?.setup(bots, level)
         renderLevels()
       })
       return button

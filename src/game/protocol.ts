@@ -35,11 +35,12 @@ export interface RoomView {
 export type ClientMessage =
   | { t: 'join'; player: string; name?: string }
   | { t: 'name'; name: string }
+  | { t: 'setup'; bots?: number | null; level?: number }
   | { t: 'start'; bots?: number; level?: number }
   | { t: 'key'; k: string; s: number }
 
 export type ServerMessage =
-  | { t: 'lobby'; host: boolean; people: number; names: string[]; playing: boolean }
+  | { t: 'lobby'; host: boolean; you: number; people: number; names: string[]; bots: number; level: number; playing: boolean }
   | { t: 'state'; game: number; you: number | null; ack: number; view: RoomView; events: RoomEvent[] }
 
 export function cleanName(name: unknown) {
