@@ -1,6 +1,6 @@
 import { LINES, type Line } from './lines'
 import { seeded, shuffle, type Rng } from './random'
-import { BREAK_MS, LINES_PER_ROUND, LINE_MS, ROLL_MS, SLIPS_TO_ROLL, WIRES } from './rules'
+import { BREAK_MS, EARLY_ODDS, EARLY_ROUNDS, LINES_PER_ROUND, LINE_MS, ROLL_MS, SLIPS_TO_ROLL, WIRES } from './rules'
 
 export type RollReason = 'slips' | 'time' | 'last'
 
@@ -97,6 +97,10 @@ export function wiresLeft(desk: Desk) {
   return WIRES - desk.cut.length
 }
 
+export function odds(desk: Desk, round: number) {
+  return wiresLeft(desk) * (round <= EARLY_ROUNDS ? EARLY_ODDS : 1)
+}
+
 export function alive(room: Room) {
   return room.desks.filter(desk => !desk.out)
 }
@@ -135,8 +139,9 @@ function startRound(room: Room): RoomEvent[] {
 }
 
 function startRoll(room: Room, desk: Desk, reason: RollReason): RoomEvent[] {
-  const remaining = Array.from({ length: WIRES }, (_, i) => i).filter(i => !desk.cut.includes(i))
-  const wire = remaining[Math.floor(room.rng() * remaining.length)]!
+  const safe = Array.from({ length: WIRES }, (_, i) => i).filter(i => i !== desk.live && !desk.cut.includes(i))
+  const dark = !safe.length || room.rng() * odds(desk, room.round) < 1
+  const wire = dark ? desk.live : safe[Math.floor(room.rng() * safe.length)]!
   desk.roll = { wire, reason, elapsed: 0 }
   return [{ type: 'roll', desk: desk.id, wire, reason }]
 }

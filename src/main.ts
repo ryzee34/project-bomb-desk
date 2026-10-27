@@ -1,8 +1,8 @@
 import './style.css'
 import { sfx, startAudio } from './audio/sound'
 import { LEVELS, pickLevel } from './game/bots'
-import { alive, currentLine, deskById, wiresLeft, type RoomEvent } from './game/room'
-import { DESKS, MIN_DESKS, SPIN_MS, WIRES, WIRE_NAMES } from './game/rules'
+import { alive, currentLine, deskById, odds, wiresLeft, type RoomEvent } from './game/room'
+import { DESKS, EARLY_ROUNDS, MIN_DESKS, SPIN_MS, WIRES, WIRE_NAMES } from './game/rules'
 import { cleanName } from './game/protocol'
 import { newCode, playerId, roomFromUrl, roomLink, saveLevel, saveName, savedLevel, savedName, setRoomInUrl } from './play/codes'
 import { localPlay } from './play/local'
@@ -205,7 +205,7 @@ function handle(events: RoomEvent[]) {
         const left = wiresLeft(desk)
         const others = alive(play.room).length - 1
         $('#breakEyebrow').textContent = `Round ${event.round}`
-        $('#breakText').textContent = `${others} of ${plural(play.room.desks.length - 1, 'other desk')} ${others === 1 ? 'is' : 'are'} still lit. Your device has ${plural(left, 'wire')} left, so the next cut is 1 in ${left}.`
+        $('#breakText').textContent = `${others} of ${plural(play.room.desks.length - 1, 'other desk')} ${others === 1 ? 'is' : 'are'} still lit. Your device has ${plural(left, 'wire')} left${event.round < EARLY_ROUNDS ? ` and round ${event.round + 1} still runs at half odds` : ''}, so the next cut is 1 in ${odds(desk, event.round + 1)}.`
         $('#break').hidden = false
         break
       }
