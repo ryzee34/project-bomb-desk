@@ -185,7 +185,7 @@ export function press(room: Room, id: number, key: string, settle = true): RoomE
   const line = currentLine(room, desk)
   if (room.phase !== 'typing' || desk.done || desk.roll || desk.slips >= SLIPS_TO_ROLL || !line) return []
   const expected = line.text[desk.pos]!
-  if (key.toLowerCase() !== expected.toLowerCase()) {
+  if (key !== expected) {
     if (desk.missed) return []
     desk.missed = true
     desk.slips++
