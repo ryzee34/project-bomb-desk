@@ -33,7 +33,7 @@ let play: Play = localPlay(Date.now(), level)
 let live = false
 let code = roomFromUrl()
 let table: Table | null = null
-let lobby: Lobby = { host: false, you: 0, people: 0, names: [], bots: null, level: NORMAL, playing: false }
+let lobby: Lobby = { host: false, you: 0, people: 0, who: [], bots: null, level: NORMAL, playing: false }
 let bots: number | null = null
 let shownDisplay = ''
 let shownSeconds = -1
@@ -43,6 +43,7 @@ let spinShown = -1
 let renameTimer = 0
 let escAt = 0
 let badUntil = 0
+let armed = 0
 
 const me = () => (play.you === null ? null : deskById(play.room, play.you))
 const playing = () => {
@@ -68,9 +69,30 @@ function flashStatus(text: string, ms = 2200) {
   statusTimer = window.setTimeout(() => setStatus(''), ms)
 }
 
+function confirmKick(id: number, button: HTMLButtonElement) {
+  if (armed !== id) {
+    armed = id
+    button.textContent = 'Sure?'
+    button.classList.add('armed')
+    setTimeout(() => {
+      if (armed === id) armed = 0
+      button.textContent = 'Kick'
+      button.classList.remove('armed')
+    }, 3000)
+    return
+  }
+  armed = 0
+  table?.kick(id)
+}
+
+function kicks() {
+  const people = lobby.host && code ? lobby.who : []
+  return new Map(people.flatMap(person => (person.desk === null ? [] : [[person.desk, person.id] as const])))
+}
+
 function refresh() {
   const room = play.room
-  panel.render(play)
+  panel.render(play, kicks(), lobby.host ? confirmKick : null)
   if (room.phase === 'break') $('#breakCount').textContent = `Round ${room.round + 1} in ${Math.max(1, Math.ceil(room.breakLeft / 1000))}`
   const desk = me()
   if (!desk) return
@@ -308,7 +330,7 @@ function renderLobby() {
         ? `Send the link to friends. The host is filling ${plural(lobby.bots, 'empty desk')} with ${LEVELS[lobby.level]!.name} bots.`
         : 'Send the link to friends. The host is playing without bots.'
   $('#lobbyText').textContent = waiting > 0 ? `${plan} The table seats ${DESKS.length}, so ${plural(waiting, 'player')} will watch.` : plan
-  lights.render(lobby.names.slice(0, DESKS.length), lobby.you, lobby.host ? extra : (lobby.bots ?? 0))
+  lights.render(lobby.who.slice(0, DESKS.length), lobby.you, lobby.host ? extra : (lobby.bots ?? 0), lobby.host ? confirmKick : null)
   $<HTMLInputElement>('#lobbyLink').value = roomLink(code)
   $('#botsRow').hidden = !lobby.host || lobby.playing
   $('#lobbyLevels').hidden = !lobby.host || lobby.playing
@@ -355,6 +377,12 @@ function sitAtTable(room: string) {
     back() {
       setStatus('')
     },
+    kicked() {
+      const room = code
+      backToMenu()
+      $('#introNote').textContent = `The host removed you from room ${room}.`
+      $('#introNote').hidden = false
+    },
   })
 }
 
@@ -388,6 +416,7 @@ function setIntro() {
 }
 
 $('#start').addEventListener('click', () => {
+  $('#introNote').hidden = true
   startAudio()
   $('#start').blur()
   if (code) return sitAtTable(code)
@@ -395,6 +424,7 @@ $('#start').addEventListener('click', () => {
 })
 
 $('#friends').addEventListener('click', () => {
+  $('#introNote').hidden = true
   startAudio()
   $('#friends').blur()
   if (code) return backToMenu()

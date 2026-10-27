@@ -295,6 +295,44 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.desk .end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.desk.out .kick {
+  display: none;
+}
+
+.kick {
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  box-shadow: inset 0 0 0 1px #3a3631;
+  padding: 3px 6px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.kick:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--muted);
+}
+
+.kick.armed {
+  color: var(--alarm);
+  box-shadow: inset 0 0 0 1px var(--alarm);
+}
+
+.kick:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
 .desk .bar {
   grid-column: 2 / 4;
   height: 2px;
@@ -588,9 +626,22 @@ body {
   color: #4f4a43;
 }
 
+.light.away i {
+  opacity: 0.3;
+  box-shadow: none;
+}
+
+.light.away span {
+  color: var(--muted);
+}
+
 .light.you i {
   outline: 1px solid var(--ink);
   outline-offset: 3px;
+}
+
+.card .note {
+  color: var(--alarm);
 }
 
 .legend {

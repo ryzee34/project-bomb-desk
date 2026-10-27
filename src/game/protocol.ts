@@ -2,6 +2,14 @@ import type { Line } from './lines'
 import type { Desk, Roll, Room, RoomEvent } from './room'
 
 export const NAME_LENGTH = 16
+export const KICKED = 4001
+
+export interface Person {
+  id: number
+  name: string
+  desk: number | null
+  away: boolean
+}
 
 export interface DeskView {
   id: number
@@ -37,10 +45,11 @@ export type ClientMessage =
   | { t: 'name'; name: string }
   | { t: 'setup'; bots?: number | null; level?: number }
   | { t: 'start'; bots?: number; level?: number }
+  | { t: 'kick'; who: number }
   | { t: 'key'; k: string; s: number }
 
 export type ServerMessage =
-  | { t: 'lobby'; host: boolean; you: number; people: number; names: string[]; bots: number; level: number; playing: boolean }
+  | { t: 'lobby'; host: boolean; you: number; people: number; names: string[]; who: Person[]; bots: number; level: number; playing: boolean }
   | { t: 'state'; game: number; you: number | null; ack: number; view: RoomView; events: RoomEvent[] }
 
 export function cleanName(name: unknown) {

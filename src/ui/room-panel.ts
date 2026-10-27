@@ -2,6 +2,8 @@ import { LEVELS } from '../game/bots'
 import { progress, wiresLeft } from '../game/room'
 import type { Play } from '../play/play'
 
+type Kick = (id: number, button: HTMLButtonElement) => void
+
 interface Row {
   el: HTMLDivElement
   odds: HTMLSpanElement
@@ -11,8 +13,9 @@ interface Row {
 export function createRoomPanel(el: HTMLElement) {
   let rows = new Map<number, Row>()
   let label = ''
+  let onKick: Kick | null = null
 
-  function build({ room, you, humans, names, level }: Play) {
+  function build({ room, you, humans, names, level }: Play, kicks: Map<number, number>) {
     const heading = document.createElement('h2')
     heading.textContent = room.desks.some(desk => !humans.has(desk.id)) ? `The room \u00b7 ${LEVELS[level]!.name}` : 'The room'
     rows = new Map()
@@ -36,7 +39,21 @@ export function createRoomPanel(el: HTMLElement) {
       track.className = 'bar'
       const bar = document.createElement('i')
       track.append(bar)
-      row.append(dot, name, odds, track)
+      const end = document.createElement('span')
+      end.className = 'end'
+      const id = kicks.get(desk.id)
+      if (id !== undefined && desk.id !== you) {
+        const kick = document.createElement('button')
+        kick.className = 'kick'
+        kick.textContent = 'Kick'
+        kick.addEventListener('click', () => {
+          kick.blur()
+          onKick?.(id, kick)
+        })
+        end.append(kick)
+      }
+      end.append(odds)
+      row.append(dot, name, end, track)
       rows.set(desk.id, { el: row, odds, bar })
       return row
     })
@@ -44,12 +61,13 @@ export function createRoomPanel(el: HTMLElement) {
   }
 
   return {
-    render(play: Play) {
+    render(play: Play, kicks: Map<number, number>, kick: Kick | null) {
       const { room, you, humans, names, level } = play
-      const key = JSON.stringify([room.desks.map(desk => desk.id), you, [...humans], [...names], level])
+      onKick = kick
+      const key = JSON.stringify([room.desks.map(desk => desk.id), you, [...humans], [...names], level, [...kicks]])
       if (key !== label) {
         label = key
-        build(play)
+        build(play, kicks)
       }
       for (const desk of room.desks) {
         const row = rows.get(desk.id)!

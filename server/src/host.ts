@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers'
 import { addBot, driveBots, dropBot, makeBots, NORMAL, pickLevel, type Bots } from '../../src/game/bots'
-import { cleanName, viewOf, type ClientMessage, type ServerMessage } from '../../src/game/protocol'
+import { cleanName, KICKED, viewOf, type ClientMessage, type Person, type ServerMessage } from '../../src/game/protocol'
 import { advance, createRoom, deskById, press, type Room, type RoomEvent } from '../../src/game/room'
 import { MIN_DESKS } from '../../src/game/rules'
 
@@ -15,6 +15,8 @@ const SYNC_MS = 250
 const BURST = 8
 const KEYS_PER_SECOND = 20
 const MAX_SOCKETS = 32
+const STALE_MS = 10_000
+const SWEEP_MS = 1_000
 
 interface Tag {
   player: string
@@ -49,6 +51,12 @@ interface Game {
 export class RoomHost extends DurableObject<Env> {
   game: Game | null = null
   timer: ReturnType<typeof setInterval> | null = null
+  swept = 0
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env)
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'))
+  }
 
   override async fetch() {
     const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket]
@@ -70,6 +78,7 @@ export class RoomHost extends DurableObject<Env> {
     if (msg.t === 'name') return this.rename(ws, tag, msg.name)
     if (msg.t === 'setup') return this.setup(ws, tag, msg.bots, msg.level)
     if (msg.t === 'start') return this.start(ws, msg.bots, msg.level)
+    if (msg.t === 'kick') return this.kick(ws, msg.who)
     if (msg.t === 'key') return this.key(tag.player, msg.k, msg.s)
   }
 
@@ -93,6 +102,11 @@ export class RoomHost extends DurableObject<Env> {
       .getWebSockets()
       .filter(ws => ws.readyState === WebSocket.OPEN && this.tag(ws))
       .sort((a, b) => this.tag(a)!.joinedAt - this.tag(b)!.joinedAt)
+  }
+
+  stale(ws: WebSocket, now: number) {
+    const seen = this.ctx.getWebSocketAutoResponseTimestamp(ws)
+    return !!seen && now - seen.getTime() > STALE_MS
   }
 
   playing() {
@@ -144,6 +158,33 @@ export class RoomHost extends DurableObject<Env> {
     else this.lobby()
   }
 
+  kick(ws: WebSocket, who: unknown) {
+    const people = this.joined()
+    if (people[0] !== ws) return
+    for (const other of people) {
+      const tag = this.tag(other)!
+      if (other === ws || tag.joinedAt !== who) continue
+      const game = this.game
+      const desk = game?.seats.get(tag.player)
+      if (game && desk !== undefined) {
+        game.seats.delete(tag.player)
+        game.names.delete(desk)
+        if (!deskById(game.room, desk).out) addBot(game.bots, desk)
+      }
+      other.close(KICKED, 'kicked')
+      this.leave(other)
+    }
+  }
+
+  sweep(now: number) {
+    this.swept = now
+    for (const ws of this.joined()) {
+      if (!this.stale(ws, now)) continue
+      ws.close(4000, 'timed out')
+      this.leave(ws)
+    }
+  }
+
   start(ws: WebSocket, bots: unknown, level: unknown) {
     const people = this.joined()
     if (people[0] !== ws || this.playing()) return
@@ -190,9 +231,10 @@ export class RoomHost extends DurableObject<Env> {
   }
 
   tick() {
+    const now = Date.now()
+    if (now - this.swept >= SWEEP_MS) this.sweep(now)
     const game = this.game
     if (!game) return this.stop()
-    const now = Date.now()
     const ms = now - game.last
     game.last = now
     game.events.push(...driveBots(game.room, game.bots, ms), ...advance(game.room, ms))
@@ -226,13 +268,18 @@ export class RoomHost extends DurableObject<Env> {
 
   lobby() {
     const people = this.joined()
-    const names = people.map(ws => this.tag(ws)!.name ?? '')
+    const now = Date.now()
+    const who = people.map((ws): Person => {
+      const tag = this.tag(ws)!
+      return { id: tag.joinedAt, name: tag.name ?? '', desk: this.game?.seats.get(tag.player) ?? null, away: this.stale(ws, now) }
+    })
+    const names = who.map(person => person.name)
     const setup = people[0] && this.tag(people[0])!.setup
     const open = SEAT_ORDER.length - Math.min(people.length, SEAT_ORDER.length)
     const bots = Math.min(setup?.bots ?? open, open)
     const level = setup?.level ?? NORMAL
     people.forEach((ws, you) =>
-      this.post(ws, { t: 'lobby', host: you === 0, you, people: people.length, names, bots, level, playing: this.playing() }),
+      this.post(ws, { t: 'lobby', host: you === 0, you, people: people.length, names, who, bots, level, playing: this.playing() }),
     )
   }
 

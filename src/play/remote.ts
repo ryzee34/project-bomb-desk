@@ -1,5 +1,5 @@
 import { NORMAL } from '../game/bots'
-import { applyView, mirrorOf, type ClientMessage, type ServerMessage } from '../game/protocol'
+import { applyView, KICKED, mirrorOf, type ClientMessage, type Person, type ServerMessage } from '../game/protocol'
 import { press, type Room, type RoomEvent } from '../game/room'
 import type { Play } from './play'
 
@@ -7,7 +7,7 @@ export interface Lobby {
   host: boolean
   you: number
   people: number
-  names: string[]
+  who: Person[]
   bots: number | null
   level: number
   playing: boolean
@@ -17,8 +17,11 @@ export interface Table {
   setup(bots: number | null, level: number): void
   start(bots: number, level: number): void
   rename(name: string): void
+  kick(who: number): void
   leave(): void
 }
+
+const PING_MS = 3_000
 
 type State = Extract<ServerMessage, { t: 'state' }>
 
@@ -87,15 +90,23 @@ export function joinRoom(
   code: string,
   player: string,
   name: () => string,
-  on: { lobby(lobby: Lobby): void; game(play: Play): void; lost(): void; back(): void },
+  on: { lobby(lobby: Lobby): void; game(play: Play): void; lost(): void; back(): void; kicked(): void },
 ): Table {
   let ws: WebSocket
   let mirror: Mirror | null = null
   let left = false
   let tries = 0
+  let pinged = 0
+  let pinger = 0
 
   const send = (msg: ClientMessage) => {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg))
+  }
+
+  const ping = () => {
+    if (ws.readyState !== WebSocket.OPEN) return
+    ws.send('ping')
+    pinged = Date.now()
   }
 
   function open() {
@@ -104,16 +115,21 @@ export function joinRoom(
       tries = 0
       mirror?.reset()
       send({ t: 'join', player, name: name() })
+      clearInterval(pinger)
+      pinger = window.setInterval(ping, PING_MS)
+      ping()
       on.back()
     }
     ws.onmessage = e => {
+      if (e.data === 'pong') return
+      if (Date.now() - pinged > PING_MS) ping()
       const msg: ServerMessage = JSON.parse(e.data)
       if (msg.t === 'lobby')
         return on.lobby({
           host: msg.host,
           you: msg.you ?? 0,
           people: msg.people,
-          names: msg.names ?? [],
+          who: msg.who ?? (msg.names ?? []).map(name => ({ id: 0, name, desk: null, away: false })),
           bots: msg.bots ?? null,
           level: msg.level ?? NORMAL,
           playing: msg.playing,
@@ -122,8 +138,13 @@ export function joinRoom(
       mirror = new Mirror(msg, send)
       on.game(mirror)
     }
-    ws.onclose = () => {
+    ws.onclose = e => {
+      clearInterval(pinger)
       if (left) return
+      if (e.code === KICKED) {
+        left = true
+        return on.kicked()
+      }
       on.lost()
       if (tries++ < 20) setTimeout(open, Math.min(1000 * tries, 5000))
     }
@@ -134,8 +155,10 @@ export function joinRoom(
     setup: (bots, level) => send({ t: 'setup', bots, level }),
     start: (bots, level) => send({ t: 'start', bots, level }),
     rename: next => send({ t: 'name', name: next }),
+    kick: who => send({ t: 'kick', who }),
     leave() {
       left = true
+      clearInterval(pinger)
       ws.close()
     },
   }
