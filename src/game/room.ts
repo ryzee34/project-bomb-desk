@@ -176,15 +176,15 @@ function checkRound(room: Room): RoomEvent[] {
   return [{ type: 'break', round: room.round }]
 }
 
-export function press(room: Room, id: number, key: string): RoomEvent[] {
+export function press(room: Room, id: number, key: string, settle = true): RoomEvent[] {
   const desk = deskById(room, id)
   const line = currentLine(room, desk)
-  if (room.phase !== 'typing' || desk.done || desk.roll || !line) return []
+  if (room.phase !== 'typing' || desk.done || desk.roll || desk.slips >= SLIPS_TO_ROLL || !line) return []
   const expected = line.text[desk.pos]!
   if (key.toLowerCase() !== expected.toLowerCase()) {
     desk.slips++
     const events: RoomEvent[] = [{ type: 'slip', desk: id }]
-    if (desk.slips >= SLIPS_TO_ROLL) events.push(...startRoll(room, desk, 'slips'))
+    if (settle && desk.slips >= SLIPS_TO_ROLL) events.push(...startRoll(room, desk, 'slips'))
     return events
   }
   desk.pos++
@@ -197,7 +197,7 @@ export function press(room: Room, id: number, key: string): RoomEvent[] {
   if (desk.lineIdx < room.lines.length) return [...events, { type: 'line', desk: id }]
   desk.done = true
   desk.finishedAs = ++room.finished
-  return [...events, { type: 'finished', desk: id }, ...checkRound(room)]
+  return [...events, { type: 'finished', desk: id }, ...(settle ? checkRound(room) : [])]
 }
 
 export function advance(room: Room, ms: number): RoomEvent[] {

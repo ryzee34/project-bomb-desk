@@ -15,12 +15,21 @@ export interface Bots {
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz'
 
+function makeBot(rng: Rng, id: number): Bot {
+  return { id, cps: between(rng, 2.4, 4.6), slipRate: between(rng, 0.018, 0.045), wait: between(rng, 400, 1200) }
+}
+
 export function makeBots(seed: number, ids: number[]): Bots {
   const rng = seeded(seed ^ 0x9e3779b9)
-  return {
-    rng,
-    list: ids.map(id => ({ id, cps: between(rng, 2.4, 4.6), slipRate: between(rng, 0.018, 0.045), wait: between(rng, 400, 1200) })),
-  }
+  return { rng, list: ids.map(id => makeBot(rng, id)) }
+}
+
+export function addBot(bots: Bots, id: number) {
+  if (!bots.list.some(bot => bot.id === id)) bots.list.push(makeBot(bots.rng, id))
+}
+
+export function dropBot(bots: Bots, id: number) {
+  bots.list = bots.list.filter(bot => bot.id !== id)
 }
 
 function wrongKey(rng: Rng, expected: string) {
