@@ -17,6 +17,7 @@ export interface Desk {
   lineLeft: number
   linesTyped: number
   slips: number
+  missed: boolean
   live: number
   cut: number[]
   roll: Roll | null
@@ -65,6 +66,7 @@ export function createRoom(seed: number, deskIds: number[]): Room {
       lineLeft: LINE_MS,
       linesTyped: 0,
       slips: 0,
+      missed: false,
       live: Math.floor(rng() * WIRES),
       cut: [],
       roll: null,
@@ -125,6 +127,7 @@ function startRound(room: Room): RoomEvent[] {
     desk.pos = 0
     desk.lineLeft = LINE_MS
     desk.slips = 0
+    desk.missed = false
     desk.done = desk.out
     desk.finishedAs = 0
   }
@@ -149,6 +152,7 @@ function resolveRoll(room: Room, desk: Desk): RoomEvent[] {
   }
   desk.cut.push(wire)
   desk.slips = 0
+  desk.missed = false
   desk.lineLeft = LINE_MS
   return [{ type: 'cut', desk: desk.id, wire }]
 }
@@ -182,12 +186,15 @@ export function press(room: Room, id: number, key: string, settle = true): RoomE
   if (room.phase !== 'typing' || desk.done || desk.roll || desk.slips >= SLIPS_TO_ROLL || !line) return []
   const expected = line.text[desk.pos]!
   if (key.toLowerCase() !== expected.toLowerCase()) {
+    if (desk.missed) return []
+    desk.missed = true
     desk.slips++
     const events: RoomEvent[] = [{ type: 'slip', desk: id }]
     if (settle && desk.slips >= SLIPS_TO_ROLL) events.push(...startRoll(room, desk, 'slips'))
     return events
   }
   desk.pos++
+  desk.missed = false
   const events: RoomEvent[] = [{ type: 'hit', desk: id }]
   if (desk.pos < line.text.length) return events
   desk.linesTyped++
