@@ -27,13 +27,14 @@ export interface RoomView {
   breakLeft: number
   lastCut: boolean
   winner: number | null
+  level: number
   desks: DeskView[]
 }
 
 export type ClientMessage =
   | { t: 'join'; player: string; name?: string }
   | { t: 'name'; name: string }
-  | { t: 'start'; bots?: number }
+  | { t: 'start'; bots?: number; level?: number }
   | { t: 'key'; k: string; s: number }
 
 export type ServerMessage =
@@ -46,7 +47,7 @@ export function cleanName(name: unknown) {
   return [...flat].slice(0, NAME_LENGTH).join('').trim()
 }
 
-export function viewOf(room: Room, people: Map<number, string>): RoomView {
+export function viewOf(room: Room, people: Map<number, string>, level: number): RoomView {
   return {
     round: room.round,
     lines: room.lines,
@@ -54,6 +55,7 @@ export function viewOf(room: Room, people: Map<number, string>): RoomView {
     breakLeft: room.breakLeft,
     lastCut: room.lastCut,
     winner: room.winner,
+    level,
     desks: room.desks.map(desk => ({
       id: desk.id,
       human: people.has(desk.id),

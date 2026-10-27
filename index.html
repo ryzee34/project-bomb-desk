@@ -40,6 +40,9 @@
         <p>You're at one of 8 desks in a basement. Type each line exactly as it's written. Every third slip, or the clock running out, makes the device on your desk cut one of its six wires. Five are safe. One isn't, and every safe cut makes the next one worse.</p>
         <p>Whoever finishes a round last gets a cut anyway. The last desk still lit wins.</p>
         <p class="small">Headphones on &middot; capitals don't matter &middot; needs a keyboard</p>
+        <div class="levels" id="introLevels" role="radiogroup" aria-label="Bot level">
+          <span class="small">Bot level</span>
+        </div>
         <div class="actions">
           <button class="btn" id="start">Sit down</button>
           <button class="btn ghost" id="friends">Play with friends</button>
@@ -66,6 +69,9 @@
           <output id="botCount">7</output>
           <button class="btn ghost step" id="moreBots" aria-label="More bots">+</button>
           <span class="small" id="botNote">8 desks in all</span>
+        </div>
+        <div class="levels" id="lobbyLevels" role="radiogroup" aria-label="Bot level" hidden>
+          <span class="small">Bot level</span>
         </div>
         <p class="small" id="lobbyState"></p>
         <div class="actions">

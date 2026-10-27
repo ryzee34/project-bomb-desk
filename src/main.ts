@@ -1,9 +1,10 @@
 import './style.css'
 import { sfx, startAudio } from './audio/sound'
+import { LEVELS, pickLevel } from './game/bots'
 import { alive, currentLine, deskById, wiresLeft, type RoomEvent } from './game/room'
 import { DESKS, MIN_DESKS, SPIN_MS, WIRES, WIRE_NAMES } from './game/rules'
 import { cleanName } from './game/protocol'
-import { newCode, playerId, roomFromUrl, roomLink, saveName, savedName, setRoomInUrl } from './play/codes'
+import { newCode, playerId, roomFromUrl, roomLink, saveLevel, saveName, savedLevel, savedName, setRoomInUrl } from './play/codes'
 import { localPlay } from './play/local'
 import type { Play } from './play/play'
 import { joinRoom, type Lobby, type Table } from './play/remote'
@@ -25,7 +26,8 @@ const scene = createDeskScene($('#scene'), reduced)
 const strip = createStrip($('#strip'))
 const panel = createRoomPanel($('#room'))
 
-let play: Play = localPlay(Date.now())
+let level = pickLevel(savedLevel())
+let play: Play = localPlay(Date.now(), level)
 let live = false
 let code = roomFromUrl()
 let table: Table | null = null
@@ -65,7 +67,7 @@ function flashStatus(text: string, ms = 2200) {
 
 function refresh() {
   const room = play.room
-  panel.render(room, play.you, play.humans, play.names)
+  panel.render(play)
   if (room.phase === 'break') $('#breakCount').textContent = `Round ${room.round + 1} in ${Math.max(1, Math.ceil(room.breakLeft / 1000))}`
   const desk = me()
   if (!desk) return
@@ -304,6 +306,7 @@ function renderLobby() {
   $('#lobbyText').textContent = `${seatedText} Send the link to friends, and the host picks how many bots take the empty desks.`
   $<HTMLInputElement>('#lobbyLink').value = roomLink(code)
   $('#botsRow').hidden = !lobby.host || lobby.playing
+  $('#lobbyLevels').hidden = !lobby.host || lobby.playing
   $('#botCount').textContent = String(extra)
   $<HTMLButtonElement>('#fewerBots').disabled = extra === 0
   $<HTMLButtonElement>('#moreBots').disabled = extra >= openDesks()
@@ -355,7 +358,7 @@ function backToMenu() {
   code = null
   setRoomInUrl(null)
   live = false
-  play = localPlay(Date.now())
+  play = localPlay(Date.now(), level)
   $('#strip').hidden = false
   $('#room').hidden = false
   clearRoll()
@@ -367,7 +370,12 @@ function backToMenu() {
   refresh()
 }
 
+function renderLevels() {
+  document.querySelectorAll<HTMLButtonElement>('.level').forEach(button => button.setAttribute('aria-checked', String(Number(button.value) === level)))
+}
+
 function setIntro() {
+  $('#introLevels').hidden = !!code
   $('#introEyebrow').textContent = code ? `Room ${code}` : '8 desks \u00b7 6 wires'
   $('#friends').textContent = code ? 'Main menu' : 'Play with friends'
   for (const id of ['#again', '#replay']) $(id).textContent = code ? 'Back to the table' : id === '#again' ? 'Sit back down' : 'Play again'
@@ -377,7 +385,7 @@ $('#start').addEventListener('click', () => {
   startAudio()
   $('#start').blur()
   if (code) return sitAtTable(code)
-  begin(localPlay(Date.now()))
+  begin(localPlay(Date.now(), level))
 })
 
 $('#friends').addEventListener('click', () => {
@@ -392,13 +400,13 @@ for (const id of ['#again', '#replay']) {
   $(id).addEventListener('click', () => {
     startAudio()
     $(id).blur()
-    if (!code) return begin(localPlay(Date.now()))
+    if (!code) return begin(localPlay(Date.now(), level))
     show('#lobby')
     renderLobby()
   })
 }
 
-$('#startGame').addEventListener('click', () => table?.start(botCount()))
+$('#startGame').addEventListener('click', () => table?.start(botCount(), level))
 $('#fewerBots').addEventListener('click', () => {
   bots = Math.max(0, botCount() - 1)
   renderLobby()
@@ -414,6 +422,25 @@ document.querySelectorAll<HTMLButtonElement>('[data-menu]').forEach(button =>
     backToMenu()
   }),
 )
+for (const group of document.querySelectorAll('.levels')) {
+  group.append(
+    ...LEVELS.map((option, i) => {
+      const button = document.createElement('button')
+      button.className = 'level'
+      button.value = String(i)
+      button.textContent = option.name
+      button.setAttribute('role', 'radio')
+      button.addEventListener('click', () => {
+        level = i
+        saveLevel(i)
+        renderLevels()
+      })
+      return button
+    }),
+  )
+}
+renderLevels()
+
 $<HTMLInputElement>('#playerName').value = savedName()
 $('#playerName').addEventListener('input', () => {
   clearTimeout(renameTimer)

@@ -5,6 +5,7 @@ export interface Play {
   you: number | null
   humans: Set<number>
   names: Map<number, string>
+  level: number
   press(key: string): RoomEvent[]
   tick(ms: number): RoomEvent[]
 }
