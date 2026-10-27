@@ -97,6 +97,34 @@ body {
   font-weight: 500;
 }
 
+.hud .left {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.menu {
+  pointer-events: auto;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid #3a3631;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+
+.menu:hover {
+  color: var(--ink);
+  border-color: var(--muted);
+}
+
+.menu:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
 .hud .right {
   text-align: right;
   display: grid;

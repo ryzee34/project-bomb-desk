@@ -37,6 +37,7 @@ let statusTimer = 0
 let spin: Spin | null = null
 let spinShown = -1
 let renameTimer = 0
+let escAt = 0
 
 const me = () => (play.you === null ? null : deskById(play.room, play.you))
 const playing = () => {
@@ -53,6 +54,7 @@ const ordinal = (n: number) => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n
 
 function show(card: string | null) {
   for (const id of CARDS) $(id).hidden = id !== card
+  $('#menu').hidden = card === '#intro'
 }
 
 function flashStatus(text: string, ms = 2200) {
@@ -219,8 +221,21 @@ function handle(events: RoomEvent[]) {
   refresh()
 }
 
+function escape() {
+  if (!$('#intro').hidden) return
+  if (playing() && performance.now() - escAt > 2000) {
+    escAt = performance.now()
+    flashStatus(code ? 'Press Esc again to leave. A bot takes over your desk.' : 'Press Esc again to quit to the menu.', 2000)
+    return
+  }
+  escAt = 0
+  backToMenu()
+}
+
 addEventListener('keydown', e => {
-  if (e.target instanceof HTMLInputElement || !playing()) return
+  if (e.target instanceof HTMLInputElement) return
+  if (e.key === 'Escape') return escape()
+  if (!playing()) return
   if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return
   if (e.key.length !== 1) return
   e.preventDefault()
@@ -334,7 +349,7 @@ function sitAtTable(room: string) {
   })
 }
 
-function leaveTable() {
+function backToMenu() {
   table?.leave()
   table = null
   code = null
@@ -354,7 +369,7 @@ function leaveTable() {
 
 function setIntro() {
   $('#introEyebrow').textContent = code ? `Room ${code}` : '8 desks \u00b7 6 wires'
-  $('#friends').textContent = code ? 'Play solo instead' : 'Play with friends'
+  $('#friends').textContent = code ? 'Main menu' : 'Play with friends'
   for (const id of ['#again', '#replay']) $(id).textContent = code ? 'Back to the table' : id === '#again' ? 'Sit back down' : 'Play again'
 }
 
@@ -368,7 +383,7 @@ $('#start').addEventListener('click', () => {
 $('#friends').addEventListener('click', () => {
   startAudio()
   $('#friends').blur()
-  if (code) return leaveTable()
+  if (code) return backToMenu()
   sitAtTable(newCode())
   setIntro()
 })
@@ -393,7 +408,12 @@ $('#moreBots').addEventListener('click', () => {
   bots = next >= openDesks() ? null : next
   renderLobby()
 })
-$('#leaveRoom').addEventListener('click', leaveTable)
+document.querySelectorAll<HTMLButtonElement>('[data-menu]').forEach(button =>
+  button.addEventListener('click', () => {
+    button.blur()
+    backToMenu()
+  }),
+)
 $<HTMLInputElement>('#playerName').value = savedName()
 $('#playerName').addEventListener('input', () => {
   clearTimeout(renameTimer)
