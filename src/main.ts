@@ -11,10 +11,12 @@ import { joinRoom, type Lobby, type Table } from './play/remote'
 import { createDeskScene } from './scene/desk'
 import { planSpin, spinStep, type Spin } from './scene/spin'
 import { paintGrain } from './ui/film'
+import { ordinal } from './ui/format'
 import { flashWhite, hurt, renderHud, setStatus } from './ui/hud'
 import { createLights } from './ui/lights'
 import { createRoomPanel } from './ui/room-panel'
 import { createStrip } from './ui/strip'
+import { createWatch } from './ui/watch'
 
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -27,6 +29,7 @@ const scene = createDeskScene($('#scene'), reduced)
 const strip = createStrip($('#strip'))
 const panel = createRoomPanel($('#room'))
 const lights = createLights($('#lobbyLights'))
+const watch = createWatch($('#ring'))
 
 let level = pickLevel(savedLevel())
 let play: Play = localPlay(Date.now(), level)
@@ -56,7 +59,6 @@ const openDesks = () => DESKS.length - Math.min(lobby.people, DESKS.length)
 const botCount = () => Math.min(bots ?? openDesks(), openDesks())
 const called = (id: number) => play.names.get(id) || `Desk ${id}`
 const its = (id: number) => (play.names.get(id) ? 'their' : 'its')
-const ordinal = (n: number) => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th'}`
 
 function show(card: string | null) {
   for (const id of CARDS) $(id).hidden = id !== card
@@ -93,6 +95,7 @@ function kicks() {
 function refresh() {
   const room = play.room
   panel.render(play, kicks(), lobby.host ? confirmKick : null)
+  if (!$('#dead').hidden) watch.render(play)
   if (room.phase === 'break') $('#breakCount').textContent = `Round ${room.round + 1} in ${Math.max(1, Math.ceil(room.breakLeft / 1000))}`
   const desk = me()
   if (!desk) return
@@ -109,10 +112,6 @@ function refresh() {
   const waiting = alive(room).filter(d => !d.done).length
   if (playing() && desk.done && room.phase === 'typing' && !desk.roll && waiting) strip.note(`Round done. Waiting on ${plural(waiting, 'desk')}.`)
   else strip.show(currentLine(room, desk), desk.pos, performance.now() < badUntil)
-  if (desk.out) {
-    const left = alive(room).length
-    $('#deadRoom').textContent = room.phase === 'over' && room.winner ? `${called(room.winner)} ${play.names.get(room.winner) ? 'had' : 'was'} the last desk lit.` : `${plural(left, 'desk')} still lit.`
-  }
 }
 
 function showSpin() {
@@ -151,9 +150,18 @@ async function explode(wire: number, place: number) {
   await sleep(1900)
   if (play !== game) return
   const lines = me()!.linesTyped
-  $('#deadText').textContent = `You got through ${plural(lines, 'line')} before the device found the ${WIRE_NAMES[wire]} wire. It was live the whole time. You went dark ${ordinal(place)} of ${play.room.desks.length}.`
-  show('#dead')
+  watchRoom(
+    'Your desk went dark',
+    `You got through ${plural(lines, 'line')} before the device found the ${WIRE_NAMES[wire]} wire. It was live the whole time. You went dark ${ordinal(place)} of ${play.room.desks.length}.`,
+  )
   $('#again').focus()
+}
+
+function watchRoom(title: string, text: string) {
+  $('#deadTitle').textContent = title
+  $('#deadText').textContent = text
+  show('#dead')
+  refresh()
 }
 
 function win() {
@@ -309,7 +317,9 @@ function begin(next: Play) {
   shownDisplay = ''
   live = true
   last = performance.now()
-  if (!desk || desk.out || play.room.phase === 'over') show('#lobby')
+  if (play.room.phase === 'over') show('#lobby')
+  else if (!desk) watchRoom('Watching the room', "A game is running. You'll get a desk in the next one.")
+  else if (desk.out) watchRoom('Your desk went dark', 'Your desk is dark for the rest of this game.')
   else show(null)
   refresh()
 }
@@ -339,6 +349,7 @@ function renderLobby() {
   $<HTMLButtonElement>('#moreBots').disabled = extra >= openDesks()
   $('#botNote').textContent = `${plural(total, 'desk')} in all`
   $('#startGame').hidden = !lobby.host || lobby.playing
+  $('#watchGame').hidden = !lobby.playing || seated
   $<HTMLButtonElement>('#startGame').disabled = total < MIN_DESKS
   $('#lobbyState').textContent = lobby.playing
     ? seated
@@ -443,6 +454,11 @@ for (const id of ['#again', '#replay']) {
 }
 
 $('#startGame').addEventListener('click', () => table?.start(botCount(), level))
+$('#watchGame').addEventListener('click', () => {
+  $('#watchGame').blur()
+  show('#dead')
+  refresh()
+})
 $('#fewerBots').addEventListener('click', () => {
   bots = Math.max(0, botCount() - 1)
   table?.setup(bots, level)

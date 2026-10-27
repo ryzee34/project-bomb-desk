@@ -29,7 +29,7 @@ import {
 import { clock } from '../ui/format'
 import { canvasTexture, noiseCanvas } from './textures'
 
-const WIRE_HEX = [0xa8261d, 0x2c58a0, 0xc9a02a, 0x3b7337, 0xd6d1c4, 0x1c1c1c]
+export const WIRE_HEX = [0xa8261d, 0x2c58a0, 0xc9a02a, 0x3b7337, 0xd6d1c4, 0x1c1c1c]
 const KEY_ROWS = ['1234567890-', 'qwertyuiop', "asdfghjkl;'", 'zxcvbnm,./']
 const SHIFTED: Record<string, string> = { '!': '1', '?': '/', ':': ';', '"': "'", _: '-' }
 const LAMP = 3.6

@@ -79,17 +79,20 @@
         <p class="small" id="lobbyState"></p>
         <div class="actions">
           <button class="btn" id="startGame" hidden>Start the game</button>
+          <button class="btn" id="watchGame" hidden>Watch the room</button>
           <button class="btn ghost" data-menu>Main menu</button>
         </div>
       </div>
     </div>
 
-    <div class="overlay" id="dead" hidden>
-      <div class="card">
-        <p class="eyebrow desk-name">Desk 4</p>
-        <h2>Your desk went dark</h2>
-        <p id="deadText"></p>
-        <p class="small" id="deadRoom"></p>
+    <div class="overlay watch" id="dead" hidden>
+      <div class="watching">
+        <div class="watch-head">
+          <p class="eyebrow desk-name">Desk 4</p>
+          <h2 id="deadTitle">Your desk went dark</h2>
+          <p id="deadText"></p>
+        </div>
+        <div class="ring" id="ring"></div>
         <div class="actions">
           <button class="btn" id="again">Sit back down</button>
           <button class="btn ghost" data-menu>Main menu</button>
