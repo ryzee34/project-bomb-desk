@@ -242,6 +242,7 @@ addEventListener('keydown', e => {
   const events = play.press(e.key)
   if (events.length) sfx.key()
   else if (me()?.missed) badUntil = performance.now() + 220
+  if (me()?.missed && e.getModifierState('CapsLock')) flashStatus('Caps Lock is on.')
   handle(events)
 })
 
