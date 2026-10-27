@@ -2,7 +2,7 @@ import { DurableObject } from 'cloudflare:workers'
 import { addBot, driveBots, dropBot, makeBots, type Bots } from '../../src/game/bots'
 import { viewOf, type ClientMessage, type ServerMessage } from '../../src/game/protocol'
 import { advance, createRoom, deskById, press, type Room, type RoomEvent } from '../../src/game/room'
-import { DESKS } from '../../src/game/rules'
+import { MIN_DESKS } from '../../src/game/rules'
 
 export interface Env {
   ROOMS: DurableObjectNamespace<RoomHost>
@@ -59,7 +59,7 @@ export class RoomHost extends DurableObject<Env> {
     if (msg.t === 'join') return this.join(ws, msg.player)
     const tag = this.tag(ws)
     if (!tag) return
-    if (msg.t === 'start') return this.start(ws)
+    if (msg.t === 'start') return this.start(ws, msg.bots)
     if (msg.t === 'key') return this.key(tag.player, msg.k, msg.s)
   }
 
@@ -117,17 +117,21 @@ export class RoomHost extends DurableObject<Env> {
     else this.lobby()
   }
 
-  start(ws: WebSocket) {
+  start(ws: WebSocket, bots: unknown) {
     const people = this.joined()
     if (people[0] !== ws || this.playing()) return
+    const humans = people.slice(0, SEAT_ORDER.length)
+    const open = SEAT_ORDER.length - humans.length
+    const count = typeof bots === 'number' && Number.isInteger(bots) ? Math.min(Math.max(bots, 0), open) : open
+    if (humans.length + count < MIN_DESKS) return
     const seed = crypto.getRandomValues(new Uint32Array(1))[0]!
-    const seats = new Map(people.slice(0, SEAT_ORDER.length).map((other, i) => [this.tag(other)!.player, SEAT_ORDER[i]!]))
-    const taken = new Set(seats.values())
+    const seats = new Map(humans.map((other, i) => [this.tag(other)!.player, SEAT_ORDER[i]!]))
+    const botDesks = SEAT_ORDER.slice(humans.length, humans.length + count)
     const now = Date.now()
     this.game = {
       id: now,
-      room: createRoom(seed, DESKS),
-      bots: makeBots(seed, DESKS.filter(id => !taken.has(id))),
+      room: createRoom(seed, [...seats.values(), ...botDesks].sort((a, b) => a - b)),
+      bots: makeBots(seed, botDesks),
       seats,
       acks: new Map(),
       buckets: new Map(),
