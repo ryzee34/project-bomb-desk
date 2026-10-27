@@ -1,4 +1,5 @@
 export const DESKS = [1, 2, 3, 4, 5, 6, 7, 8]
+export const MIN_DESKS = 2
 export const YOUR_DESK = 4
 export const LINES_PER_ROUND = 3
 export const LINE_MS = 40_000

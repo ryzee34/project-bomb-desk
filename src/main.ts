@@ -1,7 +1,7 @@
 import './style.css'
 import { sfx, startAudio } from './audio/sound'
 import { alive, currentLine, deskById, wiresLeft, type RoomEvent } from './game/room'
-import { DESKS, SPIN_MS, WIRES, WIRE_NAMES } from './game/rules'
+import { DESKS, MIN_DESKS, SPIN_MS, WIRES, WIRE_NAMES } from './game/rules'
 import { newCode, playerId, roomFromUrl, roomLink, setRoomInUrl } from './play/codes'
 import { localPlay } from './play/local'
 import type { Play } from './play/play'
@@ -29,6 +29,7 @@ let live = false
 let code = roomFromUrl()
 let table: Table | null = null
 let lobby: Lobby = { host: false, people: 0, playing: false }
+let bots: number | null = null
 let shownDisplay = ''
 let shownSeconds = -1
 let statusTimer = 0
@@ -42,6 +43,8 @@ const playing = () => {
 }
 const calm = () => playing() && !me()!.roll
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+const openDesks = () => DESKS.length - Math.min(lobby.people, DESKS.length)
+const botCount = () => Math.min(bots ?? openDesks(), openDesks())
 const ordinal = (n: number) => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th'}`
 
 function show(card: string | null) {
@@ -115,7 +118,7 @@ async function explode(wire: number, place: number) {
   await sleep(1900)
   if (play !== game) return
   const lines = me()!.linesTyped
-  $('#deadText').textContent = `You got through ${plural(lines, 'line')} before the device found the ${WIRE_NAMES[wire]} wire. It was live the whole time. You went dark ${ordinal(place)} of ${DESKS.length}.`
+  $('#deadText').textContent = `You got through ${plural(lines, 'line')} before the device found the ${WIRE_NAMES[wire]} wire. It was live the whole time. You went dark ${ordinal(place)} of ${play.room.desks.length}.`
   show('#dead')
   $('#again').focus()
 }
@@ -125,7 +128,7 @@ function win() {
   sfx.duck(1, 1.2)
   sfx.relief()
   setStatus('')
-  $('#wonText').textContent = `You outlasted ${plural(DESKS.length - 1, 'desk')} over ${plural(play.room.round, 'round')}, with ${plural(wiresLeft(me()!), 'wire')} still on your device.`
+  $('#wonText').textContent = `You outlasted ${plural(play.room.desks.length - 1, 'desk')} over ${plural(play.room.round, 'round')}, with ${plural(wiresLeft(me()!), 'wire')} still on your device.`
   show('#won')
   $('#replay').focus()
 }
@@ -197,7 +200,7 @@ function handle(events: RoomEvent[]) {
         const left = wiresLeft(desk)
         const others = alive(play.room).length - 1
         $('#breakEyebrow').textContent = `Round ${event.round}`
-        $('#breakText').textContent = `${others} of ${DESKS.length - 1} other desks are still lit. Your device has ${plural(left, 'wire')} left, so the next cut is 1 in ${left}.`
+        $('#breakText').textContent = `${others} of ${plural(play.room.desks.length - 1, 'other desk')} ${others === 1 ? 'is' : 'are'} still lit. Your device has ${plural(left, 'wire')} left, so the next cut is 1 in ${left}.`
         $('#break').hidden = false
         break
       }
@@ -271,20 +274,31 @@ function renderLobby() {
   const desk = me()
   const seated = live && !!desk && !desk.out && play.room.phase !== 'over'
   $('#lobbyCode').textContent = `Room ${code}`
-  $('#lobbyText').textContent = `${lobby.people === 1 ? 'Just you' : `${lobby.people} people`} at the table so far. Send the link to friends, and bots take any empty desk.`
+  const extra = botCount()
+  const total = Math.min(lobby.people, DESKS.length) + extra
+  $('#lobbyText').textContent = `${lobby.people === 1 ? 'Just you' : `${lobby.people} people`} at the table so far. Send the link to friends, and the host picks how many bots take the empty desks.`
   $<HTMLInputElement>('#lobbyLink').value = roomLink(code)
+  $('#botsRow').hidden = !lobby.host || lobby.playing
+  $('#botCount').textContent = String(extra)
+  $<HTMLButtonElement>('#fewerBots').disabled = extra === 0
+  $<HTMLButtonElement>('#moreBots').disabled = extra >= openDesks()
+  $('#botNote').textContent = `${plural(total, 'desk')} in all`
   $('#startGame').hidden = !lobby.host || lobby.playing
+  $<HTMLButtonElement>('#startGame').disabled = total < MIN_DESKS
   $('#lobbyState').textContent = lobby.playing
     ? seated
       ? 'Your game is still running.'
       : "A game is running. You'll get a desk in the next one."
     : lobby.host
-      ? 'Start whenever everyone is seated.'
+      ? total < MIN_DESKS
+        ? 'Add a bot or wait for a friend.'
+        : 'Start whenever everyone is seated.'
       : 'Waiting for the host to start.'
 }
 
 function sitAtTable(room: string) {
   code = room
+  bots = null
   setRoomInUrl(room)
   table?.leave()
   live = false
@@ -359,7 +373,16 @@ for (const id of ['#again', '#replay']) {
   })
 }
 
-$('#startGame').addEventListener('click', () => table?.start())
+$('#startGame').addEventListener('click', () => table?.start(botCount()))
+$('#fewerBots').addEventListener('click', () => {
+  bots = Math.max(0, botCount() - 1)
+  renderLobby()
+})
+$('#moreBots').addEventListener('click', () => {
+  const next = botCount() + 1
+  bots = next >= openDesks() ? null : next
+  renderLobby()
+})
 $('#leaveRoom').addEventListener('click', leaveTable)
 $('#copyLink').addEventListener('click', async () => {
   const input = $<HTMLInputElement>('#lobbyLink')

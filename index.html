@@ -53,6 +53,13 @@
           <input id="lobbyLink" readonly aria-label="Room link" />
           <button class="btn ghost" id="copyLink">Copy link</button>
         </div>
+        <div class="bots" id="botsRow" hidden>
+          <span class="small">Bots</span>
+          <button class="btn ghost step" id="fewerBots" aria-label="Fewer bots">&minus;</button>
+          <output id="botCount">7</output>
+          <button class="btn ghost step" id="moreBots" aria-label="More bots">+</button>
+          <span class="small" id="botNote">8 desks in all</span>
+        </div>
         <p class="small" id="lobbyState"></p>
         <div class="actions">
           <button class="btn" id="startGame" hidden>Start the game</button>

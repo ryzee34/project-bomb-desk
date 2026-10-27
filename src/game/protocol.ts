@@ -27,7 +27,7 @@ export interface RoomView {
   desks: DeskView[]
 }
 
-export type ClientMessage = { t: 'join'; player: string } | { t: 'start' } | { t: 'key'; k: string; s: number }
+export type ClientMessage = { t: 'join'; player: string } | { t: 'start'; bots?: number } | { t: 'key'; k: string; s: number }
 
 export type ServerMessage =
   | { t: 'lobby'; host: boolean; people: number; playing: boolean }

@@ -9,7 +9,7 @@ export interface Lobby {
 }
 
 export interface Table {
-  start(): void
+  start(bots: number): void
   leave(): void
 }
 
@@ -109,7 +109,7 @@ export function joinRoom(
 
   open()
   return {
-    start: () => send({ t: 'start' }),
+    start: bots => send({ t: 'start', bots }),
     leave() {
       left = true
       ws.close()
