@@ -5,12 +5,16 @@ import type { Play } from './play'
 
 export interface Lobby {
   host: boolean
+  you: number
   people: number
   names: string[]
+  bots: number | null
+  level: number
   playing: boolean
 }
 
 export interface Table {
+  setup(bots: number | null, level: number): void
   start(bots: number, level: number): void
   rename(name: string): void
   leave(): void
@@ -104,7 +108,16 @@ export function joinRoom(
     }
     ws.onmessage = e => {
       const msg: ServerMessage = JSON.parse(e.data)
-      if (msg.t === 'lobby') return on.lobby({ host: msg.host, people: msg.people, names: msg.names ?? [], playing: msg.playing })
+      if (msg.t === 'lobby')
+        return on.lobby({
+          host: msg.host,
+          you: msg.you ?? 0,
+          people: msg.people,
+          names: msg.names ?? [],
+          bots: msg.bots ?? null,
+          level: msg.level ?? NORMAL,
+          playing: msg.playing,
+        })
       if (mirror && mirror.game === msg.game) return mirror.sync(msg)
       mirror = new Mirror(msg, send)
       on.game(mirror)
@@ -118,6 +131,7 @@ export function joinRoom(
 
   open()
   return {
+    setup: (bots, level) => send({ t: 'setup', bots, level }),
     start: (bots, level) => send({ t: 'start', bots, level }),
     rename: next => send({ t: 'name', name: next }),
     leave() {
