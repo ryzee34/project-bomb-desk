@@ -1,0 +1,12 @@
+{
+  "name": "project-bomb-desk",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-15",
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "RoomHost" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RoomHost"] }],
+  "vars": {
+    "ORIGINS": "https://ryzee34.github.io,http://localhost:5194,http://localhost:5195"
+  }
+}
